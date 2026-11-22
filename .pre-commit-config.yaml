@@ -4,6 +4,7 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=1024]
+        exclude: ^argocd/install/install.yaml$
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]

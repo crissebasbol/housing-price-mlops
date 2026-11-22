@@ -41,8 +41,9 @@ build/
 dist/
 .ipynb_checkpoints/
 
-# Locust
+# Locust y port-forwards
 locust/results/
+scripts/.port_forward/
 
 # Editores y sistema
 .idea/
