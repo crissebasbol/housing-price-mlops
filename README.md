@@ -19,16 +19,17 @@ Proyecto final de **Operaciones de Machine Learning**, Pontificia Universidad Ja
 3. [Datos](#3-datos)
 4. [Validación y decisión de entrenamiento](#4-validación-y-decisión-de-entrenamiento)
 5. [Modelo, métrica y promoción](#5-modelo-métrica-y-promoción)
-6. [Análisis por lote](#6-análisis-por-lote)
-7. [MLflow](#7-mlflow)
-8. [Inferencia](#8-inferencia)
-9. [Streamlit](#9-streamlit)
-10. [CI/CD y GitOps](#10-cicd-y-gitops)
-11. [Kubernetes](#11-kubernetes)
-12. [Observabilidad y prueba de carga](#12-observabilidad-y-prueba-de-carga)
-13. [Lo que no se hizo y por qué](#13-lo-que-no-se-hizo-y-por-qué)
-14. [Cómo reproducir](#14-cómo-reproducir)
-15. [Equipo](#15-equipo)
+6. [Calibración](#6-calibración)
+7. [Análisis por lote](#7-análisis-por-lote)
+8. [MLflow](#8-mlflow)
+9. [Inferencia](#9-inferencia)
+10. [Streamlit](#10-streamlit)
+11. [CI/CD y GitOps](#11-cicd-y-gitops)
+12. [Kubernetes](#12-kubernetes)
+13. [Observabilidad y prueba de carga](#13-observabilidad-y-prueba-de-carga)
+14. [Lo que no se hizo y por qué](#14-lo-que-no-se-hizo-y-por-qué)
+15. [Cómo reproducir](#15-cómo-reproducir)
+16. [Equipo](#16-equipo)
 
 ## 1. Arquitectura
 
@@ -122,43 +123,167 @@ _En construcción._
 
 _En construcción._
 
-## 6. Análisis por lote
+## 6. Calibración
+
+Antes de llevar las reglas a Airflow corrimos el pipeline fuera del clúster con `scripts/simulate_batches.py`. Aplica la misma lógica del paquete `housing_ml` (esquema, calidad, drift, decisión de entrenamiento y compuertas), sin Airflow ni MLflow, sobre los 6 lotes descargados de nuestra API de datos. Los recorre dos veces, como cuando el pipeline reinicia la API al agotarse. Sirve para calibrar los umbrales y para medir el tiempo y la memoria del entrenamiento.
+
+### Corrida del 21 de noviembre
+
+WSL2 (Ubuntu) en un portátil con Intel Core i7-1355U y 32 GB de RAM; CPython 3.12.16 y scikit-learn 1.8.0.
+
+```bash
+uv run python scripts/simulate_batches.py --batches-dir data/batches --out data/simulation
+```
+
+| Ciclo | Lote | Filas | Válidas | Entrenamiento | Señales | Promoción | MAPE candidato | MAPE productivo | Entrenamiento (s) |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0 | 73784 | 73635 | baseline | baseline | rejected | 23,26 % | - | 2.4 |
+| 1 | 1 | 94551 | 94421 | baseline | baseline | rejected | 24,66 % | - | 10.2 |
+| 1 | 2 | 230366 | 230029 | baseline | baseline | rejected | 24,21 % | - | 15.3 |
+| 1 | 3 | 4055 | 4054 | small_batch | - | - | - | - | - |
+| 1 | 4 | 320696 | 320538 | baseline | baseline | rejected | 20,43 % | - | 32.7 |
+| 1 | 5 | 361457 | 360660 | baseline | baseline | rejected | 20,84 % | - | 74.2 |
+| 2 | 0 | 73784 | - | - | - | - | - | - | - |
+| 2 | 1 | 94551 | - | - | - | - | - | - | - |
+| 2 | 2 | 230366 | - | - | - | - | - | - | - |
+| 2 | 3 | 4055 | - | - | - | - | - | - | - |
+| 2 | 4 | 320696 | - | - | - | - | - | - | - |
+| 2 | 5 | 361457 | - | - | - | - | - | - | - |
+
+El MAPE candidato se mide sobre el holdout fijo; el log muestra además el MAPE de validación. La memoria pico del proceso llegó a 2.107 MB al entrenar con el lote 5.
+
+<details>
+<summary>Log de la corrida</summary>
+
+```text
+=== ciclo 1, lote 0: 73784 filas
+Esquema ok; válidas 73635, rechazadas 149 {'price_out_of_range': 65, 'house_size_out_of_range': 25, 'acre_lot_out_of_range': 64, 'bed_out_of_range': 1, 'bath_out_of_range': 1}
+PSI: {}
+Nuevas: {}
+Entrena: línea base, no hay modelo productivo.
+Entrenado en 2 s con 51397 filas, 102 iteraciones; val MAPE 23,43 %
+  OK  G5 comportamiento: 0,00 % fuera de rango plausible, 0 predicciones bajan al aumentar house_size 20 %, categorías desconocidas sin error
+  NO  G6 presupuesto: p95 de una predicción 60,5 ms (máximo 50), modelo de 2,3 MB (máximo 200)
+  diagnóstico price_band=<300k: 23,39 % frente a -
+Se rechaza: G6 presupuesto: p95 de una predicción 60,5 ms (máximo 50), modelo de 2,3 MB (máximo 200).
+
+=== ciclo 1, lote 1: 94551 filas
+Esquema ok; válidas 94421, rechazadas 130 {'price_out_of_range': 71, 'acre_lot_out_of_range': 57, 'bed_out_of_range': 2}
+PSI: {'price': 0.3382, 'house_size': 8.3199, 'bed': 1.1151, 'bath': 1.0619, 'acre_lot': 0.1294}
+Nuevas: {'status': 0.0, 'state': 0.0, 'city': 0.0521, 'zip_code': 0.102, 'brokered_by': 0.2147}
+Entrena: línea base, no hay modelo productivo.
+Entrenado en 10 s con 117309 filas, 265 iteraciones; val MAPE 24,59 %
+  OK  G5 comportamiento: 0,00 % fuera de rango plausible, 0 predicciones bajan al aumentar house_size 20 %, categorías desconocidas sin error
+  NO  G6 presupuesto: p95 de una predicción 81,1 ms (máximo 50), modelo de 5,0 MB (máximo 200)
+  diagnóstico price_band=<300k: 24,75 % frente a -
+Se rechaza: G6 presupuesto: p95 de una predicción 81,1 ms (máximo 50), modelo de 5,0 MB (máximo 200).
+
+=== ciclo 1, lote 2: 230366 filas
+Esquema ok; válidas 230029, rechazadas 337 {'price_out_of_range': 159, 'house_size_out_of_range': 8, 'acre_lot_out_of_range': 168, 'bed_out_of_range': 1, 'bath_out_of_range': 2}
+PSI: {'price': 0.0006, 'house_size': 0.0016, 'bed': 0.0023, 'bath': 0.0013, 'acre_lot': 0.0044}
+Nuevas: {'status': 1.0, 'state': 0.0, 'city': 0.0235, 'zip_code': 0.0412, 'brokered_by': 0.1016}
+Entrena: línea base, no hay modelo productivo.
+Entrenado en 15 s con 277963 filas, 311 iteraciones; val MAPE 24,08 %
+  OK  G5 comportamiento: 0,00 % fuera de rango plausible, 0 predicciones bajan al aumentar house_size 20 %, categorías desconocidas sin error
+  NO  G6 presupuesto: p95 de una predicción 135,0 ms (máximo 50), modelo de 6,0 MB (máximo 200)
+  diagnóstico price_band=<300k: 24,33 % frente a -
+Se rechaza: G6 presupuesto: p95 de una predicción 135,0 ms (máximo 50), modelo de 6,0 MB (máximo 200).
+
+=== ciclo 1, lote 3: 4055 filas
+Esquema ok; válidas 4054, rechazadas 1 {'acre_lot_out_of_range': 1}
+PSI: {'price': 0.4081, 'house_size': 0.0669, 'bed': 0.0875, 'bath': 0.1857, 'acre_lot': 0.1094}
+Nuevas: {'status': 0.0, 'state': 1.0, 'city': 0.2706, 'zip_code': 1.0, 'brokered_by': 0.6332}
+No entrena: lote pequeño (4.054 filas válidas, 1,0 % del acumulado; mínimo 10.000 filas y 5 % del acumulado). Trae categorías nuevas en state (100,0 % del lote), city (27,1 % del lote), zip_code (100,0 % del lote), brokered_by (63,3 % del lote); sus filas quedan en CLEAN para el próximo entrenamiento.
+
+=== ciclo 1, lote 4: 320696 filas
+Esquema ok; válidas 320538, rechazadas 158 {'house_size_out_of_range': 5, 'acre_lot_out_of_range': 140, 'bed_out_of_range': 10, 'bath_out_of_range': 6}
+PSI: {'price': 8.0748, 'house_size': 0.6023, 'bed': 0.2315, 'bath': 0.5862, 'acre_lot': 0.0109}
+Nuevas: {'status': 0.0, 'state': 0.0, 'city': 0.0217, 'zip_code': 0.0563, 'brokered_by': 0.1232}
+Entrena: línea base, no hay modelo productivo.
+Entrenado en 33 s con 505227 filas, 734 iteraciones; val MAPE 20,22 %
+  OK  G5 comportamiento: 0,00 % fuera de rango plausible, 0 predicciones bajan al aumentar house_size 20 %, categorías desconocidas sin error
+  NO  G6 presupuesto: p95 de una predicción 259,4 ms (máximo 50), modelo de 12,5 MB (máximo 200)
+  diagnóstico price_band=<300k: 27,14 % frente a -
+  diagnóstico price_band=300k-500k: 12,20 % frente a -
+Se rechaza: G6 presupuesto: p95 de una predicción 259,4 ms (máximo 50), modelo de 12,5 MB (máximo 200).
+
+=== ciclo 1, lote 5: 361457 filas
+Esquema ok; válidas 360660, rechazadas 797 {'price_out_of_range': 390, 'house_size_out_of_range': 58, 'acre_lot_out_of_range': 150, 'bed_out_of_range': 217, 'bath_out_of_range': 152}
+PSI: {'price': 8.1982, 'house_size': 0.9056, 'bed': 0.3774, 'bath': 0.7372, 'acre_lot': 0.0412}
+Nuevas: {'status': 0.0, 'state': 0.0, 'city': 0.0389, 'zip_code': 0.0959, 'brokered_by': 0.1128}
+Entrena: línea base, no hay modelo productivo.
+Entrenado en 74 s con 757350 filas, 1024 iteraciones; val MAPE 20,80 %
+  OK  G5 comportamiento: 0,00 % fuera de rango plausible, 0 predicciones bajan al aumentar house_size 20 %, categorías desconocidas sin error
+  NO  G6 presupuesto: p95 de una predicción 328,6 ms (máximo 50), modelo de 17,0 MB (máximo 200)
+  diagnóstico price_band=<300k: 28,58 % frente a -
+  diagnóstico price_band=>500k: 17,59 % frente a -
+  diagnóstico price_band=300k-500k: 14,94 % frente a -
+Se rechaza: G6 presupuesto: p95 de una predicción 328,6 ms (máximo 50), modelo de 17,0 MB (máximo 200).
+
+=== ciclo 2, lote 0: 73784 filas
+Duplicado del lote 0; MAPE del champion en su holdout: None
+
+=== ciclo 2, lote 1: 94551 filas
+Duplicado del lote 1; MAPE del champion en su holdout: None
+
+=== ciclo 2, lote 2: 230366 filas
+Duplicado del lote 2; MAPE del champion en su holdout: None
+
+=== ciclo 2, lote 3: 4055 filas
+Duplicado del lote 3; MAPE del champion en su holdout: None
+
+=== ciclo 2, lote 4: 320696 filas
+Duplicado del lote 4; MAPE del champion en su holdout: None
+
+=== ciclo 2, lote 5: 361457 filas
+Duplicado del lote 5; MAPE del champion en su holdout: None
+```
+
+</details>
+
+**Lo que muestra esta corrida:**
+
+- **G6 rechazó todos los candidatos por latencia.** El p95 de una predicción subió de 60,5 ms con 102 iteraciones a 328,6 ms con 1.024, siempre por encima del máximo de 50 ms. El tamaño (2,3 a 17,0 MB) quedó lejos del máximo de 200 MB.
+- **Nunca hubo modelo productivo.** Como ninguna línea base pasó, las compuertas que comparan contra el productivo (G1 a G4) no llegaron a evaluarse. En el segundo ciclo los lotes repetidos se reconocieron como duplicados, pero no hubo modelo que vigilar.
+- **La regla de lote pequeño se comportó como se diseñó.** El lote 3 (4.054 filas válidas, 1,0 % del acumulado) no entrena y sus filas quedan para el siguiente entrenamiento.
+
+## 7. Análisis por lote
 
 _En construcción._
 
-## 7. MLflow
+## 8. MLflow
 
 _En construcción._
 
-## 8. Inferencia
+## 9. Inferencia
 
 _En construcción._
 
-## 9. Streamlit
+## 10. Streamlit
 
 _En construcción._
 
-## 10. CI/CD y GitOps
+## 11. CI/CD y GitOps
 
 _En construcción._
 
-## 11. Kubernetes
+## 12. Kubernetes
 
 _En construcción._
 
-## 12. Observabilidad y prueba de carga
+## 13. Observabilidad y prueba de carga
 
 _En construcción._
 
-## 13. Lo que no se hizo y por qué
+## 14. Lo que no se hizo y por qué
 
 _En construcción._
 
-## 14. Cómo reproducir
+## 15. Cómo reproducir
 
 _En construcción._
 
-## 15. Equipo
+## 16. Equipo
 
 | Integrante | Responsabilidad |
 |---|---|
