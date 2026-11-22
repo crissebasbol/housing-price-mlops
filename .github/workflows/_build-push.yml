@@ -80,6 +80,8 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     concurrency:
       group: gitops-update
       cancel-in-progress: false
