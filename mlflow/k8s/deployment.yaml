@@ -32,7 +32,7 @@ spec:
               memory: 64Mi
       containers:
         - name: mlflow
-          image: crissebasbol/housing-mlflow:bootstrap
+          image: crissebasbol/housing-mlflow:sha-ea92f63
           ports:
             - name: http
               containerPort: 5000
