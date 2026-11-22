@@ -16,6 +16,9 @@ on:
       - .github/workflows/_build-push.yml
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mlflow:
     uses: ./.github/workflows/_build-push.yml
