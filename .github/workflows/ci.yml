@@ -59,6 +59,14 @@ jobs:
           done
           exit $status
 
+      - name: Check Argo CD app paths
+        run: |
+          status=0
+          for path in $(yq -N '.spec.source.path // "", .spec.sources[].path // ""' argocd/apps/*.yaml | grep -v '^$'); do
+            [ -d "$path" ] || { echo "La ruta $path de una app de Argo CD no existe en el repo"; status=1; }
+          done
+          exit $status
+
       - name: Render and validate the Airflow chart
         run: |
           version=$(yq '.spec.sources[0].targetRevision' argocd/apps/airflow.yaml)

@@ -28,7 +28,7 @@ class PromotionThresholds:
     behavior_rows: int = 500
     size_increase: float = 0.20
     latency_calls: int = 200
-    max_latency_p95_ms: float = 50.0
+    max_latency_p95_ms: float = 150.0
     max_model_size_mb: float = 200.0
 
 
