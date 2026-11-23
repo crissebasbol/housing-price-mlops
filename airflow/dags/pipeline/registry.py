@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import mlflow
 import mlflow.sklearn
@@ -78,13 +79,15 @@ def load_uri(model_uri: str):
 
 def log_model(model, sample: pd.DataFrame):
     signature = infer_signature(sample, model.predict(sample))
-    return mlflow.sklearn.log_model(
-        model,
-        name="model",
-        signature=signature,
-        pip_requirements=pip_requirements(),
-        skops_trusted_types=SKOPS_TRUSTED_TYPES,
-    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        return mlflow.sklearn.log_model(
+            model,
+            name="model",
+            signature=signature,
+            pip_requirements=pip_requirements(),
+            skops_trusted_types=SKOPS_TRUSTED_TYPES,
+        )
 
 
 def register(model_uri: str, tags: dict) -> int:
