@@ -40,6 +40,8 @@ spec:
             - configMapRef:
                 name: mlflow
           env:
+            - name: MLFLOW_SERVER_ENABLE_JOB_EXECUTION
+              value: "false"
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef: {name: postgres-mlflow, key: POSTGRES_PASSWORD}
