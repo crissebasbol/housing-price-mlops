@@ -3,7 +3,7 @@ airflowVersion: "3.1.8"
 images:
   airflow:
     repository: crissebasbol/housing-airflow
-    tag: sha-1d29aa7
+    tag: sha-6ad5b83
     pullPolicy: IfNotPresent
 nodeSelector:
   mlops/tier: data
