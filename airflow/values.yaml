@@ -77,6 +77,7 @@ triggerer:
 # Los Jobs son inmutables: como hooks de Argo CD se recrean en cada sincronización.
 migrateDatabaseJob:
   useHelmHooks: false
+  ttlSecondsAfterFinished: null
   applyCustomEnv: false
   jobAnnotations:
     argocd.argoproj.io/hook: Sync
@@ -86,6 +87,7 @@ migrateDatabaseJob:
     limits: {cpu: 500m, memory: 1Gi}
 createUserJob:
   useHelmHooks: false
+  ttlSecondsAfterFinished: null
   applyCustomEnv: false
   jobAnnotations:
     argocd.argoproj.io/hook: Sync
