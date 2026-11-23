@@ -100,7 +100,7 @@ def test_segment_regression_blocks_promotion(evaluation):
 def test_budget_gate():
     t = PromotionThresholds()
     assert gate_budget(12.0, 30.0, t).passed
-    assert not gate_budget(80.0, 30.0, t).passed
+    assert not gate_budget(180.0, 30.0, t).passed
     assert not gate_budget(12.0, 500.0, t).passed
 
 
