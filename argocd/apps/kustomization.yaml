@@ -5,3 +5,4 @@ resources:
   - data-platform.yaml
   - airflow.yaml
   - serving.yaml
+  - observability.yaml
