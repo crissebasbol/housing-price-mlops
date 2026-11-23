@@ -15,6 +15,7 @@ resources:
   - grafana/k8s/dashboard-configmap.yaml
   - grafana/k8s/deployment.yaml
   - grafana/k8s/service.yaml
+  - ../locust
 
 configMapGenerator:
   - name: prometheus-config
