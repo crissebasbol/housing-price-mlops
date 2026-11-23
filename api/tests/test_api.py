@@ -35,9 +35,9 @@ def sink() -> FakeSink:
 def make_client(registry, sink):
     clients = []
 
-    def make(admin_token: str = ADMIN_TOKEN) -> TestClient:
+    def make(admin_token: str = ADMIN_TOKEN, shadow_sample_rate: float = 1.0) -> TestClient:
         app = create_app(
-            Settings(admin_token=admin_token),
+            Settings(admin_token=admin_token, shadow_sample_rate=shadow_sample_rate),
             registry,
             sink,
             Explainer(fake_explainer_factory),
@@ -140,6 +140,18 @@ def test_shadow_prediction_is_saved_with_the_champion(make_client, registry, sin
     assert event["shadow_prediction"] > 0 and event["shadow_latency_ms"] > 0
     assert event["replay_row_hash"] == "a" * 64
     assert metric("predictions_total", model_role="shadow") == before + 1
+
+
+def test_shadow_sampling_skips_live_traffic_but_keeps_replay(make_client, registry, sink):
+    registry.aliases.update(champion=1, challenger=2)
+    client = make_client(shadow_sample_rate=0.0)
+    refresh(client)
+    client.post("/predict", json=EXAMPLE)
+    client.post("/predict", json=EXAMPLE, headers={"X-Replay-Row": "b" * 64})
+    live, replay = logged(client, sink)
+    assert live.get("shadow_version") is None
+    assert replay["shadow_version"] == 2 and replay["shadow_prediction"] > 0
+    assert client.get("/model-info").json()["shadow_sample_rate"] == 0.0
 
 
 def test_promotion_is_picked_up_without_restart(make_client, registry):

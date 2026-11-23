@@ -1,5 +1,6 @@
 import logging
 import math
+import random
 import re
 import secrets
 import time
@@ -183,12 +184,17 @@ def create_app(
             "replay_row_hash": replay_row(replay),
         }
 
+    def use_shadow(event: dict) -> bool:
+        if event["replay_row_hash"] or settings.shadow_sample_rate >= 1:
+            return True
+        return random.random() < settings.shadow_sample_rate
+
     def after_prediction(
         event: dict, frame: pd.DataFrame, champion: LoadedModel, shadow: LoadedModel | None
     ) -> None:
         for field in unknown_categories(champion.model, frame):
             UNKNOWN_CATEGORY.labels(field).inc()
-        if shadow is not None:
+        if shadow is not None and use_shadow(event):
             started = time.perf_counter()
             try:
                 value = float(shadow.model.predict(frame)[0])
@@ -305,6 +311,7 @@ def create_app(
             "champion": champion.info() if champion else None,
             "shadow": shadow.info() if shadow else None,
             "reload_interval_seconds": settings.reload_interval_seconds,
+            "shadow_sample_rate": settings.shadow_sample_rate,
             "instance": settings.instance,
             "git_sha": settings.git_sha,
         }

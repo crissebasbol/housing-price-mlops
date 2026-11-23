@@ -35,6 +35,8 @@ spec:
             - configMapRef:
                 name: api
           env:
+            - name: SHADOW_SAMPLE_RATE
+              value: "0.2"
             - name: DATA_DB_PASSWORD
               valueFrom:
                 secretKeyRef: {name: postgres-data, key: API_WRITER_PASSWORD}
@@ -54,10 +56,12 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 10
             failureThreshold: 6
