@@ -25,5 +25,5 @@ housing-ml = { workspace = true }
 members = ["housing_ml"]
 
 [tool.pytest.ini_options]
-testpaths = ["housing_ml/tests", "airflow/tests", "api/tests"]
-pythonpath = ["airflow/dags", "api"]
+testpaths = ["housing_ml/tests", "airflow/tests", "api/tests", "streamlit/tests"]
+pythonpath = ["airflow/dags", "api", "streamlit"]
