@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - data-platform.yaml
   - airflow.yaml
+  - serving.yaml
