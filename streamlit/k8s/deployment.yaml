@@ -18,7 +18,7 @@ spec:
         mlops/tier: serving
       containers:
         - name: streamlit
-          image: crissebasbol/housing-streamlit:bootstrap
+          image: crissebasbol/housing-streamlit:sha-0ccd1d3
           ports:
             - name: http
               containerPort: 8501
