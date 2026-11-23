@@ -1,16 +1,12 @@
 executor: LocalExecutor
-
 airflowVersion: "3.1.8"
-
 images:
   airflow:
     repository: crissebasbol/housing-airflow
-    tag: bootstrap
+    tag: sha-1d29aa7
     pullPolicy: IfNotPresent
-
 nodeSelector:
   mlops/tier: data
-
 env:
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
     value: "False"
@@ -20,11 +16,9 @@ env:
     value: "2"
   - name: OMP_NUM_THREADS
     value: "2"
-
 extraEnvFrom: |
   - configMapRef:
       name: airflow-pipeline
-
 secret:
   - envName: DATA_DB_PASSWORD
     secretName: postgres-data
@@ -35,7 +29,6 @@ secret:
   - envName: AWS_SECRET_ACCESS_KEY
     secretName: minio-airflow
     secretKey: AWS_SECRET_ACCESS_KEY
-
 # Claves y conexión desde Secrets estables (scripts/create_secrets.sh). Si el chart las generara,
 # Argo CD vería claves aleatorias nuevas en cada renderizado y reiniciaría Airflow sin fin.
 data:
@@ -43,7 +36,6 @@ data:
 fernetKeySecretName: airflow-fernet-key
 apiSecretKeySecretName: airflow-api-secret-key
 jwtSecretName: airflow-jwt-secret
-
 postgresql:
   enabled: false
 redis:
@@ -52,7 +44,6 @@ statsd:
   enabled: false
 pgbouncer:
   enabled: false
-
 # Con LocalExecutor las tareas (y el entrenamiento) corren dentro del scheduler.
 scheduler:
   resources:
@@ -60,24 +51,20 @@ scheduler:
     limits: {cpu: "2", memory: 4Gi}
   logGroomerSidecar:
     enabled: false
-
 workers:
   persistence:
     enabled: true
     size: 5Gi
-
 apiServer:
   resources:
     requests: {cpu: 250m, memory: 768Mi}
     limits: {cpu: "1", memory: 2Gi}
-
 dagProcessor:
   resources:
     requests: {cpu: 100m, memory: 512Mi}
     limits: {cpu: "1", memory: 1536Mi}
   logGroomerSidecar:
     enabled: false
-
 triggerer:
   enabled: true
   persistence:
@@ -87,7 +74,6 @@ triggerer:
     limits: {cpu: 500m, memory: 1Gi}
   logGroomerSidecar:
     enabled: false
-
 # Los Jobs son inmutables: como hooks de Argo CD se recrean en cada sincronización.
 migrateDatabaseJob:
   useHelmHooks: false
@@ -98,7 +84,6 @@ migrateDatabaseJob:
   resources:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: 500m, memory: 1Gi}
-
 createUserJob:
   useHelmHooks: false
   applyCustomEnv: false
