@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = ["housing-ml"]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff==0.17.6"]
+dev = ["pytest>=8.3", "ruff==0.17.6", "requests>=2.32"]
 
 [tool.uv]
 package = false
@@ -18,4 +18,5 @@ housing-ml = { workspace = true }
 members = ["housing_ml"]
 
 [tool.pytest.ini_options]
-testpaths = ["housing_ml/tests"]
+testpaths = ["housing_ml/tests", "airflow/tests"]
+pythonpath = ["airflow/dags"]
