@@ -55,7 +55,7 @@ status() {
 }
 
 case "${1:-start}" in
-  start) stop; start ;;
+  start) stop; start; sleep 5; status ;;
   stop) stop ;;
   status) status ;;
   *) echo "Uso: $0 [start|stop|status]" >&2; exit 1 ;;
