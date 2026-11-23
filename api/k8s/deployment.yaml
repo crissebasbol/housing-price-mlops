@@ -35,6 +35,8 @@ spec:
             - configMapRef:
                 name: api
           env:
+            - name: SHADOW_SAMPLE_RATE
+              value: "0.2"
             - name: DATA_DB_PASSWORD
               valueFrom:
                 secretKeyRef: {name: postgres-data, key: API_WRITER_PASSWORD}

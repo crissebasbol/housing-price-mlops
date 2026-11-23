@@ -17,6 +17,7 @@ class Settings:
     previous_alias: str = "previous_champion"
     reload_interval_seconds: float = 30.0
     shadow_enabled: bool = True
+    shadow_sample_rate: float = 1.0
     admin_token: str = ""
     db_host: str = "postgres-data"
     db_port: int = 5432
@@ -35,6 +36,7 @@ class Settings:
             model_name=_env("MODEL_NAME", cls.model_name),
             reload_interval_seconds=float(_env("RELOAD_INTERVAL_SECONDS", "30")),
             shadow_enabled=_env("SHADOW_ENABLED", "true").lower() == "true",
+            shadow_sample_rate=min(1.0, max(0.0, float(_env("SHADOW_SAMPLE_RATE", "1")))),
             admin_token=_env("API_ADMIN_TOKEN", ""),
             db_host=_env("DATA_DB_HOST", cls.db_host),
             db_port=int(_env("DATA_DB_PORT", "5432")),
