@@ -50,11 +50,26 @@ def summary(runs: pd.DataFrame) -> dict:
     }
 
 
+def default_cycles(cycles: list[int]) -> list[int]:
+    return sorted({cycles[0], cycles[-1]}) if cycles else []
+
+
+INTEGER_COLUMNS = (
+    "Ingreso",
+    "Ciclo",
+    "Lote",
+    "Filas válidas",
+    "Rechazadas",
+    "Candidata",
+    "Champion después",
+)
+
+
 def batch_table(runs: pd.DataFrame, version_url) -> pd.DataFrame:
     def link(version):
         return None if version is None or pd.isna(version) else version_url(int(version))
 
-    return pd.DataFrame(
+    table = pd.DataFrame(
         {
             "Ingreso": runs["ingestion_id"],
             "Ciclo": runs["cycle"],
@@ -79,6 +94,11 @@ def batch_table(runs: pd.DataFrame, version_url) -> pd.DataFrame:
             "MLflow": runs["candidate_version"].map(link),
         }
     )
+    for column in INTEGER_COLUMNS:
+        table[column] = pd.to_numeric(table[column], errors="coerce").astype("Int64")
+    for column in ("MAPE candidata %", "MAPE champion %", "Cambio MAPE %"):
+        table[column] = pd.to_numeric(table[column], errors="coerce").astype("Float64")
+    return table
 
 
 def champion_mape_series(runs: pd.DataFrame) -> pd.DataFrame:

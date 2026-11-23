@@ -205,7 +205,11 @@ def history_page():
         return
 
     cycles = sorted(int(c) for c in runs["cycle"].unique())
-    selected = st.multiselect("Ciclo", cycles, default=cycles)
+    selected = st.multiselect("Ciclo", cycles, default=transforms.default_cycles(cycles))
+    st.caption(
+        "Por defecto se ven el primer ciclo (lotes nuevos, entrenamientos y promociones) y el "
+        "último (lotes repetidos que solo vigilan al champion). Agregue ciclos para ver el resto."
+    )
     view = runs[runs["cycle"].isin(selected)]
     stats = transforms.summary(view)
     columns = st.columns(4)
@@ -217,7 +221,7 @@ def history_page():
     )
 
     st.dataframe(
-        transforms.batch_table(view, registry.version_url),
+        transforms.batch_table(view, registry.version_url).style.format(na_rep="", precision=2),
         hide_index=True,
         column_config={"MLflow": st.column_config.LinkColumn("MLflow", display_text="ver")},
     )
@@ -305,6 +309,6 @@ def model_page():
         if actions.empty:
             st.write("Sin recargas ni rollbacks registrados.")
         else:
-            st.dataframe(actions, hide_index=True)
+            st.dataframe(actions.style.format(na_rep=""), hide_index=True)
     except Exception as error:
         st.warning(f"No se pudo leer audit.model_actions: {error}")

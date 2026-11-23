@@ -128,6 +128,19 @@ def test_batch_table_labels_percentages_and_links(runs):
     assert fourth["MLflow"] is None
 
 
+def test_batch_table_uses_nullable_types(runs):
+    table = transforms.batch_table(runs, url)
+    assert str(table["Candidata"].dtype) == "Int64"
+    assert table["Candidata"].isna().tolist() == [False, False, False, True]
+    assert table["Lote"].tolist() == [0, 1, 2, 0]
+
+
+def test_default_cycles_first_and_last():
+    assert transforms.default_cycles([1, 2, 3, 12]) == [1, 12]
+    assert transforms.default_cycles([1]) == [1]
+    assert transforms.default_cycles([]) == []
+
+
 def test_champion_mape_series_includes_monitoring(runs):
     series = transforms.champion_mape_series(runs)
     assert series["Ingreso"].tolist() == [3, 4]
