@@ -10,8 +10,9 @@ Argo CD sincroniza el clúster con este repositorio (GitOps). Se instala una sol
 | `apps/data-platform.yaml` | `data-platform` | `platform/`: namespace, PostgreSQL de datos, MinIO, MLflow y API de datos |
 | `apps/airflow.yaml` | `airflow` | Chart oficial de Airflow 1.22.0 con `airflow/values.yaml` (multi-source) y `airflow/k8s/`: PostgreSQL de metadatos y ConfigMap del pipeline |
 | `apps/serving.yaml` | `serving` | `serving/`: API de inferencia (2 réplicas en el nodo de serving); luego Streamlit |
+| `apps/observability.yaml` | `observability` | `observability/`: Prometheus y Grafana con el dashboard "Housing API" en el nodo de serving |
 
-Streamlit se agrega a `serving/`; las apps de la observabilidad y Locust se agregan como archivos nuevos en `apps/` (y en `apps/kustomization.yaml`); la app raíz las crea sola en la siguiente sincronización.
+Streamlit se agrega a `serving/` y Locust a `observability/`. Una app nueva es un archivo más en `apps/` (y en `apps/kustomization.yaml`); la app raíz la crea sola en la siguiente sincronización.
 
 Todas usan `automated` con `prune` y `selfHeal`: un cambio en `master` se aplica solo (cada 3 minutos o con **Refresh**) y un cambio manual en el clúster se revierte al estado de Git. Las apps no llevan el finalizer de borrado en cascada: borrar una app en Argo no borra sus recursos. El namespace y el PVC de la API de datos además tienen `Prune=false,Delete=false`.
 

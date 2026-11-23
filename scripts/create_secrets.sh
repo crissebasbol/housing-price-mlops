@@ -72,3 +72,6 @@ apply_secret airflow-admin --from-literal=password="$AIRFLOW_ADMIN_PASSWORD"
 
 require API_ADMIN_TOKEN
 apply_secret api-admin --from-literal=token="$API_ADMIN_TOKEN"
+
+require GRAFANA_ADMIN_PASSWORD
+apply_secret grafana-admin --from-literal=password="$GRAFANA_ADMIN_PASSWORD"
