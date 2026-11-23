@@ -27,7 +27,7 @@ spec:
         mlops/tier: serving
       containers:
         - name: api
-          image: crissebasbol/housing-api:sha-764d438
+          image: crissebasbol/housing-api:sha-587b565
           ports:
             - name: http
               containerPort: 8000
