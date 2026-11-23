@@ -69,3 +69,6 @@ apply_secret airflow-fernet-key --from-literal=fernet-key="$AIRFLOW_FERNET_KEY"
 apply_secret airflow-api-secret-key --from-literal=api-secret-key="$AIRFLOW_API_SECRET_KEY"
 apply_secret airflow-jwt-secret --from-literal=jwt-secret="$AIRFLOW_JWT_SECRET"
 apply_secret airflow-admin --from-literal=password="$AIRFLOW_ADMIN_PASSWORD"
+
+require API_ADMIN_TOKEN
+apply_secret api-admin --from-literal=token="$API_ADMIN_TOKEN"
