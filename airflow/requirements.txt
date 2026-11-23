@@ -1,0 +1,4 @@
+mlflow-skinny==3.16.1
+skops==0.16.0
+shap==0.54.1
+matplotlib==3.11.2
