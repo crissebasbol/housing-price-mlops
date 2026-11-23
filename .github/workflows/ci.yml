@@ -58,3 +58,10 @@ jobs:
               || status=1
           done
           exit $status
+
+      - name: Render and validate the Airflow chart
+        run: |
+          version=$(yq '.spec.sources[0].targetRevision' argocd/apps/airflow.yaml)
+          helm repo add apache-airflow https://airflow.apache.org >/dev/null
+          helm template airflow apache-airflow/airflow --version "$version" -n housing-mlops \
+            -f airflow/values.yaml | kubeconform -strict -summary -schema-location default

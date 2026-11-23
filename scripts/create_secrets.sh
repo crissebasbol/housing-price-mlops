@@ -59,3 +59,13 @@ apply_secret minio-airflow \
 apply_secret minio-locust \
   --from-literal=AWS_ACCESS_KEY_ID=locust \
   --from-literal=AWS_SECRET_ACCESS_KEY="$MINIO_LOCUST_SECRET_KEY"
+
+require POSTGRES_AIRFLOW_PASSWORD AIRFLOW_ADMIN_PASSWORD AIRFLOW_API_SECRET_KEY AIRFLOW_JWT_SECRET \
+  AIRFLOW_FERNET_KEY
+apply_secret postgres-airflow --from-literal=POSTGRES_PASSWORD="$POSTGRES_AIRFLOW_PASSWORD"
+apply_secret airflow-metadata \
+  --from-literal=connection="postgresql://airflow:${POSTGRES_AIRFLOW_PASSWORD}@postgres-airflow:5432/airflow"
+apply_secret airflow-fernet-key --from-literal=fernet-key="$AIRFLOW_FERNET_KEY"
+apply_secret airflow-api-secret-key --from-literal=api-secret-key="$AIRFLOW_API_SECRET_KEY"
+apply_secret airflow-jwt-secret --from-literal=jwt-secret="$AIRFLOW_JWT_SECRET"
+apply_secret airflow-admin --from-literal=password="$AIRFLOW_ADMIN_PASSWORD"
