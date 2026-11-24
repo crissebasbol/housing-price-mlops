@@ -32,6 +32,10 @@ curl -X POST http://10.43.97.106:8005/admin/rollback -H "Authorization: Bearer $
   -H 'Content-Type: application/json' -d '{"reason":"Sube el error en producción","actor":"equipo"}'
 ```
 
+## Escalado
+
+Un `HorizontalPodAutoscaler` (`k8s/hpa.yaml`) mantiene entre 2 y 3 réplicas según la CPU: agrega una cuando el promedio pasa del 70 % de lo que pide cada pod (350m de 500m). El Deployment no fija `replicas`, para que Argo CD no deshaga lo que decide el HPA. El máximo es 3 porque `nodo-serving` tiene 4 CPU y también corre Prometheus, Grafana y Streamlit; con la API saturada cada réplica usa 1 CPU.
+
 ## Variables
 
 | Variable | Origen | Valor |

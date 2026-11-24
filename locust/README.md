@@ -21,6 +21,6 @@ La muestra es `s3://datasets/replay/holdout_sample.json`, que el DAG actualiza e
 STABLE_SECONDS=120 ./locust/run_levels.sh
 ```
 
-Por cada escalón corre Locust headless dentro del pod (rampa de 20 usuarios por segundo y 3 min estables), guarda `kubectl top` de los pods de la API y agrega una fila a `locust/resultados/resumen.csv` con RPS, fallos, latencias, si cumple (menos de 1 % de fallos y p95 menor a 500 ms), la versión champion y los segundos de inicio y fin para ubicar el escalón en Grafana. Antes de empezar comprueba que la API tenga champion.
+Por cada escalón corre Locust headless dentro del pod (rampa de 20 usuarios por segundo y 3 min estables), guarda `kubectl top` de los pods de la API y agrega una fila a `locust/resultados/resumen.csv` con las réplicas observadas (el máximo de pods en el escalón, porque el HPA puede escalar), RPS, fallos, latencias, si cumple (menos de 1 % de fallos y p95 menor a 500 ms), la versión champion y los segundos de inicio y fin para ubicar el escalón en Grafana. Antes de empezar comprueba que la API tenga champion.
 
 La UI web queda en `http://10.43.97.106:8010` para pruebas manuales.
