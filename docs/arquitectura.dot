@@ -1,0 +1,70 @@
+digraph G {
+  graph [rankdir=LR, forcelabels=true, fontname="Helvetica", fontsize=13, nodesep=0.35, ranksep=0.9, pad=0.3, bgcolor="white", newrank=true, compound=true];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=12, margin="0.18,0.08", penwidth=1.2];
+  edge  [fontname="Helvetica", fontsize=10, color="#475569", fontcolor="#334155", arrowsize=0.7];
+
+  subgraph cluster_git {
+    label=<<b>GitOps (fuera del clúster)</b>>; style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8";
+    dev  [label="Equipo\ncommits y PRs", shape=oval, fillcolor="#e2e8f0", color="#64748b"];
+    gh   [label="GitHub\nhousing-price-mlops", fillcolor="#e2e8f0", color="#64748b"];
+    gha  [label="GitHub Actions\nCI: ruff, pytest, kubeconform\nbuild de imágenes (linux/amd64)", fillcolor="#e2e8f0", color="#64748b"];
+    dh   [label="DockerHub\nhousing-airflow, -api,\n-streamlit, -mlflow\ntags sha-xxxxxxx", shape=cylinder, fillcolor="#e2e8f0", color="#64748b"];
+    dev -> gh [label="push / PR"];
+    gh -> gha;
+    gha -> dh [label="push imagen"];
+    gha -> gh [label="commit del bot\ncon el tag nuevo", style=dashed];
+  }
+
+  subgraph cluster_k8s {
+    label=<<b>Clúster RKE2 "housing" · namespace housing-mlops</b>>; style="rounded"; color="#334155"; penwidth=1.5;
+
+    argo [label="Argo CD\napp-of-apps: data-platform,\nairflow, serving, observability", fillcolor="#ffedd5", color="#ea580c"];
+
+    subgraph cluster_data {
+      label=<<b>nodo-data · 10.43.97.105</b><br/>datos y entrenamiento>; style="rounded,filled"; fillcolor="#f0fdf4"; color="#16a34a";
+      dapi [label="API de datos v2\nun lote por petición", fillcolor="#dcfce7", color="#16a34a"];
+      af   [label="Airflow 3.1.8 · DAG housing_pipeline\ncada 15 min: valida, decide,\nentrena, compara y promueve", fillcolor="#dcfce7", color="#16a34a"];
+      pga  [label="PostgreSQL\nmetadatos de Airflow", shape=cylinder, fillcolor="#dcfce7", color="#16a34a"];
+      pgd  [label="PostgreSQL de datos\nraw · clean · audit", shape=cylinder, fillcolor="#bbf7d0", color="#15803d"];
+      minio [label="MinIO\nlanding · datasets · mlflow", shape=cylinder, fillcolor="#dcfce7", color="#16a34a"];
+      mlf  [label="MLflow 3.16\nexperimentos y registro\nalias champion · challenger ·\nprevious_champion", fillcolor="#bbf7d0", color="#15803d"];
+      pgm  [label="PostgreSQL\nde MLflow", shape=cylinder, fillcolor="#dcfce7", color="#16a34a"];
+      loc  [label="Locust\nPredictUser · ReplayUser", fillcolor="#dcfce7", color="#16a34a"];
+    }
+
+    subgraph cluster_serv {
+      label=<<b>nodo-serving · 10.43.97.92</b><br/>inferencia y observabilidad>; style="rounded,filled"; fillcolor="#eff6ff"; color="#2563eb";
+      api  [label="FastAPI · HPA 2 a 3 réplicas\nchampion + sombra (challenger)\nrecarga por alias cada 30 s", fillcolor="#bfdbfe", color="#1d4ed8"];
+      st   [label="Streamlit\npredicción · historial · modelo", fillcolor="#dbeafe", color="#2563eb"];
+      prom [label="Prometheus\nAPI, API de datos, cAdvisor", fillcolor="#dbeafe", color="#2563eb"];
+      graf [label="Grafana\ndashboard Housing API", fillcolor="#dbeafe", color="#2563eb"];
+    }
+  }
+
+  vm  [label="VM 10.43.97.106\nRancher · kubectl · argocd\nport-forward 8002 a 8011", fillcolor="#f1f5f9", color="#64748b"];
+  usr [label="Usuarios\n(navegador)", shape=oval, fillcolor="#f1f5f9", color="#64748b"];
+
+  argo -> gh [label="lee manifiestos", dir=back, style=dashed, color="#ea580c", fontcolor="#c2410c"];
+  dh -> api [label="pull de imágenes", style=dotted, lhead=cluster_k8s, color="#64748b"];
+
+  af -> dapi [label="GET /data"];
+  af -> minio [label="respuesta cruda"];
+  af -> pgd [label="RAW · CLEAN · auditoría"];
+  af -> mlf [label="runs · versiones · alias"];
+  af -> pga [arrowhead=none];
+  mlf -> pgm [arrowhead=none];
+  mlf -> minio [label="artefactos"];
+
+  api -> mlf [label="carga por alias", color="#1d4ed8", fontcolor="#1d4ed8"];
+  api -> pgd [label="eventos de inferencia\ny recargas", color="#1d4ed8", fontcolor="#1d4ed8"];
+  st -> api [label="/predict · /explain · /feedback", color="#1d4ed8", fontcolor="#1d4ed8"];
+  st -> pgd [label="historial (solo lectura)", color="#1d4ed8", fontcolor="#1d4ed8"];
+  loc -> api [label="carga", color="#16a34a", fontcolor="#15803d"];
+  loc -> minio [xlabel="muestra\nde replay", color="#16a34a", fontcolor="#15803d"];
+  prom -> api [label="scrape", color="#2563eb", fontcolor="#1d4ed8"];
+  graf -> prom [color="#2563eb"];
+  graf -> pgd [label="MAPE del replay", color="#2563eb", fontcolor="#1d4ed8"];
+
+  usr -> vm;
+  vm -> st [label="UIs por port-forward", style=dashed, lhead=cluster_k8s];
+}
