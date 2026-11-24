@@ -42,7 +42,9 @@ Proyecto final de **Operaciones de Machine Learning**, Pontificia Universidad Ja
 
 ![Diagrama de arquitectura: GitOps fuera del clúster y los dos nodos del clúster RKE2 con sus componentes y flujos](docs/images/arquitectura.png)
 
-*Arquitectura del sistema (fuente en [`docs/arquitectura.dot`](docs/arquitectura.dot)). Arriba, el ciclo GitOps: un push a GitHub dispara GitHub Actions, que publica la imagen en DockerHub con el SHA del commit y escribe el tag nuevo en el manifiesto; Argo CD lee el repositorio y sincroniza el clúster. Abajo, el clúster: en `nodo-data` corren la ingesta, el entrenamiento y los datos; en `nodo-serving`, la inferencia y la observabilidad.*
+*Arquitectura del sistema. Arriba, el ciclo GitOps: un push a GitHub dispara GitHub Actions, que publica la imagen en DockerHub con el SHA del commit y escribe el tag nuevo en el manifiesto; Argo CD lee el repositorio y sincroniza el clúster. Abajo, el clúster: en `nodo-data` corren la ingesta, el entrenamiento y los datos; en `nodo-serving`, la inferencia y la observabilidad.*
+
+**Versión interactiva:** [crissebasbol.github.io/housing-price-mlops/arquitectura.html](https://crissebasbol.github.io/housing-price-mlops/arquitectura.html) (fuente en [`docs/arquitectura.html`](docs/arquitectura.html)). Cada componente muestra qué hace, sus recursos y con quién habla, y cuatro recorridos animan un cambio en Git, un lote de datos, una predicción y la prueba de carga paso a paso. La imagen de arriba sale de esa misma página.
 
 | Componente | Nodo | Rol |
 |---|---|---|
