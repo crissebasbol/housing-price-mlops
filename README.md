@@ -568,7 +568,7 @@ Dos detalles que costaron tiempo y quedaron documentados en el código: la valid
 
 *Run `c1-b1` (versión 2): 29 métricas y los tags de trazabilidad: ingreso 2, lote 1, ciclo 1, lotes usados 1 y 2, huella de los datos, commit `6ad5b83` de la imagen, corrida de Airflow, razón del entrenamiento (línea base) y de la promoción.*
 
-<!-- captura pendiente: mlflow_04_registro_alias (Model Registry con versiones y alias) -->
+El modelo productivo se identifica por alias en el registro: la API lo resuelve como `housing-price-model@champion`. La página "Modelo en producción" de Streamlit ([sección 10](#10-streamlit)) lee esos alias directamente del registro de MLflow y muestra a qué versión apunta cada uno, con su ingreso, lote, MAPE de holdout, decisión y commit.
 ![Error por banda de precio del run de la versión 4](docs/images/mlflow_06_graficos.png)
 
 *Artefacto `plots/val_mape_por_banda.png` del run `c1-b4`: MAPE de validación por banda de precio, ~27 % por debajo de 300 mil USD, ~12 % entre 300 y 500 mil y ~16 % por encima. Es el diagnóstico por banda que se registra pero no bloquea la promoción.*
