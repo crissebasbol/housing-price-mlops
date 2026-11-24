@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Mapa interactivo de la arquitectura de Housing Price MLOps en Kubernetes">
+<title>Housing Price MLOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: un plano técnico del sistema; el diagrama manda y el panel lateral explica lo que se toca. */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #14212b;
+  --muted: #566573;
+  --line: #9aa7b2;
+  --frame: #c9d2da;
+  --ext-fill: #eef1f4; --ext-stroke: #7d8b97;
+  --data-band: #eaf5f0; --data-fill: #d5ede2; --data-stroke: #2f8a67;
+  --serv-band: #eaf0fa; --serv-fill: #d6e3f7; --serv-stroke: #3466b4;
+  --argo-fill: #fde6d2; --argo-stroke: #c2621f;
+  --gitops: #c2621f; --lote: #1f8a63; --inf: #2f62c9; --carga: #8a4fc2;
+  --font-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f161c; --surface: #16212a; --ink: #e5ecf1; --muted: #9db0bd; --line: #6c7d8a; --frame: #2c3b47;
+  --ext-fill: #1c2832; --ext-stroke: #7e909d;
+  --data-band: #12231d; --data-fill: #183a2e; --data-stroke: #4cbf92;
+  --serv-band: #121c2c; --serv-fill: #1a2e4d; --serv-stroke: #6f9be6;
+  --argo-fill: #3d2717; --argo-stroke: #ec8a46;
+  --gitops: #ec8a46; --lote: #4cbf92; --inf: #6f9be6; --carga: #b386e6;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0f161c; --surface: #16212a; --ink: #e5ecf1; --muted: #9db0bd; --line: #6c7d8a; --frame: #2c3b47;
+  --ext-fill: #1c2832; --ext-stroke: #7e909d;
+  --data-band: #12231d; --data-fill: #183a2e; --data-stroke: #4cbf92;
+  --serv-band: #121c2c; --serv-fill: #1a2e4d; --serv-stroke: #6f9be6;
+  --argo-fill: #3d2717; --argo-stroke: #ec8a46;
+  --gitops: #ec8a46; --lote: #4cbf92; --inf: #6f9be6; --carga: #b386e6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 1880px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(24px, 3vw, 34px); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 70ch; }
+.flows { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.flows .lbl { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: 4px; }
+.flow-btn {
+  font: 500 14px var(--font-body); color: var(--ink); background: var(--surface); border: 1.5px solid var(--frame);
+  border-radius: 999px; padding: 6px 14px 6px 10px; display: inline-flex; gap: 8px; align-items: center; cursor: pointer;
+}
+.flow-btn i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); display: inline-block; }
+.flow-btn[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.flow-btn:focus-visible, .ctl:focus-visible, .node:focus-visible, .steps li button:focus-visible { outline: 2.5px solid var(--inf); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.canvas { background: var(--surface); border: 1px solid var(--frame); border-radius: 12px; overflow-x: auto; }
+.canvas svg { display: block; width: 100%; min-width: 900px; height: auto; }
+aside { background: var(--surface); border: 1px solid var(--frame); border-radius: 12px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+aside h2 { font-family: var(--font-display); font-size: 20px; margin: 0; }
+aside h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 0 0; font-weight: 500; }
+aside p { margin: 0; }
+.tag { justify-self: start; font-family: var(--font-mono); font-size: 12px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--frame); color: var(--muted); }
+.facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.facts li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; }
+.facts b { font-weight: 500; color: var(--muted); }
+.facts span { overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 13px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--frame); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+a { color: var(--inf); }
+.steps-box { display: grid; gap: 10px; }
+.ctls { display: flex; gap: 8px; flex-wrap: wrap; }
+.ctl { font: 500 14px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--frame); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.steps li button { all: unset; cursor: pointer; display: block; font-size: 14px; color: var(--muted); }
+.steps li.on button { color: var(--ink); font-weight: 500; }
+.steps li.on::marker { color: var(--c); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px 22px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; gap: 8px; align-items: center; }
+.sw { width: 18px; height: 12px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.ln { width: 28px; height: 0; border-top: 2px solid var(--line); display: inline-block; }
+.ln.dash { border-top-style: dashed; }
+footer { font-size: 13px; color: var(--muted); }
+
+/* SVG */
+.band-label { font: 600 17px var(--font-display); fill: var(--ink); }
+.band-sub { font: 500 13px var(--font-mono); fill: var(--muted); }
+.node rect, .node path.shape { stroke-width: 1.6; transition: opacity .2s, stroke-width .2s; }
+.node { cursor: pointer; }
+.node .t { font: 600 17px var(--font-body); fill: var(--ink); }
+.node .s { font: 400 14px var(--font-body); fill: var(--muted); }
+.k-ext .shape { fill: var(--ext-fill); stroke: var(--ext-stroke); }
+.k-data .shape { fill: var(--data-fill); stroke: var(--data-stroke); }
+.k-serv .shape { fill: var(--serv-fill); stroke: var(--serv-stroke); }
+.k-argo .shape { fill: var(--argo-fill); stroke: var(--argo-stroke); }
+.node.sel .shape { stroke-width: 3.2; }
+.edge path { fill: none; stroke: var(--line); stroke-width: 1.7; transition: stroke .2s, opacity .2s, stroke-width .2s; }
+.edge.dash path { stroke-dasharray: 6 5; }
+.edge text { font: 500 13px var(--font-body); fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.edge.hot path { stroke-width: 3; }
+.edge.hot text { fill: var(--ink); font-weight: 600; }
+svg.dim .node:not(.lit) { opacity: .35; }
+svg.dim .edge:not(.hot) { opacity: .25; }
+.pulse { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .node rect, .node path.shape, .edge path { transition: none; } }
+
+/* Modo PNG: solo el plano, para exportarlo al README */
+body.png { padding: 0; background: var(--surface); }
+body.png .wrap { max-width: none; gap: 0; }
+body.png header, body.png .flows, body.png aside, body.png footer, body.png .steps-box { display: none; }
+body.png .main { grid-template-columns: 1fr; }
+body.png .canvas { border: 0; border-radius: 0; }
+body.png .canvas svg { width: 1600px; min-width: 0; }
+body.png .legend { padding: 4px 28px 18px; background: var(--surface); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Housing Price MLOps · arquitectura en Kubernetes</div>
+    <h1>Mapa del sistema</h1>
+    <p class="lede">Toca un componente para ver qué hace y con quién habla, o reproduce un recorrido para seguir un mensaje de punta a punta. Los números son los del clúster el 23 de noviembre.</p>
+  </header>
+
+  <div class="flows" role="group" aria-label="Recorridos">
+    <span class="lbl">Recorridos</span>
+    <button class="flow-btn" type="button" data-flow="gitops" style="--c: var(--gitops)" aria-pressed="false"><i></i>Un cambio en Git</button>
+    <button class="flow-btn" type="button" data-flow="lote" style="--c: var(--lote)" aria-pressed="false"><i></i>Un lote de datos</button>
+    <button class="flow-btn" type="button" data-flow="inferencia" style="--c: var(--inf)" aria-pressed="false"><i></i>Una predicción</button>
+    <button class="flow-btn" type="button" data-flow="carga" style="--c: var(--carga)" aria-pressed="false"><i></i>Prueba de carga</button>
+  </div>
+
+  <div class="main">
+    <div class="canvas">
+      <svg id="map" viewBox="0 0 1600 1020" role="img" aria-label="Diagrama de arquitectura de Housing Price MLOps">
+        <defs id="defs"></defs>
+        <g id="bands"></g>
+        <g id="edges"></g>
+        <g id="nodes"></g>
+        <g id="fx"></g>
+      </svg>
+      <div class="legend" id="legend">
+        <span><i class="sw" style="background: var(--ext-fill); border-color: var(--ext-stroke)"></i>Fuera del clúster</span>
+        <span><i class="sw" style="background: var(--argo-fill); border-color: var(--argo-stroke)"></i>Argo CD</span>
+        <span><i class="sw" style="background: var(--data-fill); border-color: var(--data-stroke)"></i>nodo-data</span>
+        <span><i class="sw" style="background: var(--serv-fill); border-color: var(--serv-stroke)"></i>nodo-serving</span>
+        <span><i class="ln"></i>Petición o datos</span>
+        <span><i class="ln dash"></i>GitOps y acceso</span>
+        <span>Los cilindros guardan estado (bases y almacenamiento)</span>
+      </div>
+    </div>
+
+    <aside aria-live="polite">
+      <div class="steps-box" id="stepsBox" hidden>
+        <h3 id="flowName">Recorrido</h3>
+        <div class="ctls">
+          <button class="ctl" type="button" id="prev">Anterior</button>
+          <button class="ctl" type="button" id="play">Reproducir</button>
+          <button class="ctl" type="button" id="next">Siguiente</button>
+        </div>
+        <ol class="steps" id="steps"></ol>
+      </div>
+      <div id="detail">
+        <span class="tag">Sin selección</span>
+        <h2 style="margin-top:8px">Cómo leer el mapa</h2>
+        <p style="margin-top:8px">Arriba, lo que pasa fuera del clúster: el código en GitHub, la CI y las imágenes en DockerHub. Abajo, los dos nodos: <b>nodo-data</b> ingiere, valida, entrena y guarda; <b>nodo-serving</b> responde predicciones y mide todo.</p>
+        <p style="margin-top:8px">Cada caja es un servicio desplegado por Argo CD desde el repositorio. Las flechas son las conexiones principales; las secundarias aparecen en el detalle de cada componente.</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>Repositorio: <a href="https://github.com/crissebasbol/housing-price-mlops" target="_blank" rel="noopener">github.com/crissebasbol/housing-price-mlops</a> · Proyecto final de Operaciones de Machine Learning, Pontificia Universidad Javeriana.</footer>
+</div>
+
+<script>
+(() => {
+const README = "https://github.com/crissebasbol/housing-price-mlops#";
+const SVGNS = "http://www.w3.org/2000/svg";
+
+const NODES = [
+  {id:"equipo", k:"ext", x:40, y:56, w:150, h:64, t:"Equipo", s:["3 integrantes"]},
+  {id:"github", k:"ext", x:290, y:56, w:210, h:64, t:"GitHub", s:["housing-price-mlops"]},
+  {id:"actions", k:"ext", x:620, y:52, w:280, h:72, t:"GitHub Actions", s:["CI y build de imágenes"]},
+  {id:"dockerhub", k:"ext", x:1010, y:48, w:240, h:80, t:"DockerHub", s:["tags sha-xxxxxxx"], db:true},
+  {id:"usuarios", k:"ext", x:1290, y:56, w:110, h:64, t:"Usuarios", s:["navegador"]},
+  {id:"vm", k:"ext", x:1440, y:52, w:130, h:72, t:"VM .106", s:["port-forward", "8002 a 8011"]},
+  {id:"argo", k:"argo", x:290, y:222, w:260, h:56, t:"Argo CD", s:["app-of-apps desde master"]},
+  {id:"apidatos", k:"data", x:80, y:360, w:220, h:76, t:"API de datos v2", s:["un lote por petición"]},
+  {id:"airflow", k:"data", x:400, y:360, w:500, h:76, t:"Airflow 3.1.8 · housing_pipeline", s:["cada 15 min: valida, decide, entrena y promueve"]},
+  {id:"pgairflow", k:"data", x:1000, y:356, w:200, h:84, t:"PostgreSQL", s:["metadatos de Airflow"], db:true},
+  {id:"locust", k:"data", x:1300, y:360, w:220, h:76, t:"Locust", s:["PredictUser · ReplayUser"]},
+  {id:"pgdatos", k:"data", x:80, y:504, w:280, h:88, t:"PostgreSQL de datos", s:["raw · clean · audit"], db:true},
+  {id:"minio", k:"data", x:420, y:504, w:220, h:88, t:"MinIO", s:["landing · datasets · mlflow"], db:true},
+  {id:"mlflow", k:"data", x:720, y:510, w:260, h:76, t:"MLflow 3.16", s:["registro · alias champion"]},
+  {id:"pgmlflow", k:"data", x:1060, y:504, w:200, h:88, t:"PostgreSQL", s:["metadatos de MLflow"], db:true},
+  {id:"streamlit", k:"serv", x:60, y:780, w:220, h:76, t:"Streamlit", s:["predicción · historial"]},
+  {id:"fastapi", k:"serv", x:380, y:780, w:360, h:76, t:"FastAPI · HPA 2 a 3 réplicas", s:["champion + sombra, recarga por alias"]},
+  {id:"prometheus", k:"serv", x:840, y:780, w:220, h:76, t:"Prometheus", s:["scrape cada 5 s"]},
+  {id:"grafana", k:"serv", x:1140, y:780, w:220, h:76, t:"Grafana", s:["dashboard Housing API"]},
+];
+
+const EDGES = [
+  {id:"g1", a:"equipo", b:"github", p:[[190,88],[290,88]], l:[240,79,"PRs"]},
+  {id:"g2", a:"github", b:"actions", p:[[500,78],[620,78]], l:[560,69,"dispara la CI"]},
+  {id:"g3", a:"actions", b:"github", p:[[620,100],[500,100]], l:[560,118,"commit del tag"], dash:true},
+  {id:"g4", a:"actions", b:"dockerhub", p:[[900,88],[1010,88]], l:[955,79,"push"]},
+  {id:"g5", a:"argo", b:"github", p:[[395,222],[395,120]], l:[405,172,"lee los manifiestos","start"], dash:true},
+  {id:"g6", a:"argo", b:"airflow", p:[[420,278],[420,360]], l:[430,302,"sincroniza el clúster","start"], dash:true},
+  {id:"g7", a:"dockerhub", b:"airflow", p:[[1130,128],[1130,180]], l:[1140,158,"pull de imágenes","start"], dash:true},
+  {id:"g8", a:"usuarios", b:"vm", p:[[1400,88],[1440,88]]},
+  {id:"g9", a:"vm", b:"streamlit", p:[[1505,124],[1505,180]], l:[1495,158,"UIs","end"], dash:true},
+  {id:"d1", a:"airflow", b:"apidatos", p:[[400,398],[300,398]], l:[350,389,"GET /data"]},
+  {id:"d2", a:"airflow", b:"pgairflow", p:[[900,398],[1000,398]], l:[950,389,"metadatos"]},
+  {id:"d3", a:"airflow", b:"pgdatos", p:[[440,436],[440,470],[220,470],[220,504]], l:[330,462,"RAW · CLEAN · auditoría"]},
+  {id:"d4", a:"airflow", b:"minio", p:[[530,436],[530,504]], l:[538,476,"respuesta cruda","start"]},
+  {id:"d5", a:"airflow", b:"mlflow", p:[[850,436],[850,510]], l:[858,476,"runs · versiones · alias","start"]},
+  {id:"d6", a:"mlflow", b:"minio", p:[[720,548],[640,548]], l:[680,539,"artefactos"]},
+  {id:"d7", a:"mlflow", b:"pgmlflow", p:[[980,548],[1060,548]]},
+  {id:"s4", a:"streamlit", b:"fastapi", p:[[280,818],[380,818]], l:[330,809,"/predict"]},
+  {id:"s5", a:"fastapi", b:"mlflow", p:[[730,780],[730,586]], l:[722,742,"carga por alias","end"]},
+  {id:"s6", a:"fastapi", b:"pgdatos", p:[[420,780],[420,660],[300,660],[300,592]], l:[412,742,"eventos de inferencia","end"]},
+  {id:"s7", a:"streamlit", b:"pgdatos", p:[[150,780],[150,592]], l:[158,742,"historial","start"]},
+  {id:"s8", a:"prometheus", b:"fastapi", p:[[840,818],[740,818]], l:[790,809,"scrape"]},
+  {id:"s9", a:"grafana", b:"prometheus", p:[[1140,818],[1060,818]], l:[1100,809,"consulta"]},
+  {id:"c1", a:"locust", b:"fastapi", p:[[1460,436],[1460,940],[560,940],[560,856]], l:[1010,931,"carga de la prueba"]},
+];
+
+const INFO = {
+  equipo: {g:"Fuera del clúster", q:"Tres integrantes. Todo cambio entra por un PR con revisión cruzada (CODEOWNERS) y se fusiona con merge commit.", f:[["Ramas","una por PR, se borra al fusionar"],["Protección","master pide PR, una aprobación y los checks ci y manifests"]], r:"16-equipo"},
+  github: {g:"Fuera del clúster", q:"El repositorio es la fuente de verdad: código, manifiestos de Kubernetes, valores de Helm y apps de Argo CD. Nada se aplica a mano en el clúster.", f:[["Repo","crissebasbol/housing-price-mlops"],["Rama","master (protegida)"]], r:"11-cicd-y-gitops"},
+  actions: {g:"Fuera del clúster", q:"En cada PR corre la CI: ruff, 89 pruebas y la validación de todos los manifiestos y del chart de Airflow con kubeconform. Al fusionar, construye y publica las imágenes que cambiaron y escribe el tag nuevo en el manifiesto.", f:[["Workflows","ci, build-airflow, build-api, build-streamlit, build-mlflow"],["Tag","sha-<7> del commit"],["Commit del bot","Imagen <componente> sha-<7> [skip ci]"]], r:"11-cicd-y-gitops"},
+  dockerhub: {g:"Fuera del clúster", q:"Registro de las imágenes propias, una por componente y por commit. Los manifiestos nunca usan latest.", f:[["Imágenes","housing-airflow, housing-api, housing-streamlit, housing-mlflow"],["Ejemplo","housing-api:sha-587b565"]], r:"11-cicd-y-gitops"},
+  usuarios: {g:"Fuera del clúster", q:"Quien usa el sistema entra por el navegador a las interfaces que publica la VM de entrada.", f:[["Interfaces","Streamlit, API, Airflow, MLflow, Grafana, Locust"]], r:"1-arquitectura"},
+  vm: {g:"Fuera del clúster", q:"VM 10.43.97.106: no es nodo del clúster. Tiene Rancher, kubectl, el CLI de Argo y los port-forward hacia las interfaces.", f:[["Puertos","8002 Airflow · 8003 MLflow · 8004 MinIO · 8005 API · 8006 Argo · 8007 Streamlit · 8008 Grafana · 8009 Prometheus · 8010 Locust · 8011 API de datos"]], r:"1-arquitectura"},
+  argo: {g:"Clúster · namespace argocd", q:"Se aplica a mano una sola app, housing-root; ella crea las demás desde argocd/apps: data-platform, airflow, serving y observability. Todas con sincronización automática, prune y selfHeal.", f:[["Versión","Argo CD v3.6.1"],["Patrón","app-of-apps, por olas"],["Evidencia","History muestra cada commit del bot sincronizado"]], r:"11-cicd-y-gitops"},
+  apidatos: {x:["prometheus"], g:"nodo-data", q:"Instancia propia de la API del curso (grupo 1, martes). Entrega 6 lotes, uno por petición, y luego responde 400 con el fin de datos; el pipeline la reinicia y sigue leyendo.", f:[["Imagen","cristiandiaz13/mlops-puj:data-api-pf-v2"],["Recursos","100m / 512Mi, límite 1 / 1536Mi"],["Interfaz",":8011"]], r:"3-datos"},
+  airflow: {g:"nodo-data", q:"El DAG housing_pipeline tiene 26 tareas y tres bifurcaciones: tipo de lote (nuevo, repetido o fin de datos), entrenar o no, y promover o rechazar. Una ejecución es una petición y un lote. Con LocalExecutor las tareas corren en el scheduler.", f:[["Versión","Airflow 3.1.8, chart 1.22.0"],["Frecuencia","cada 15 min, una corrida a la vez"],["Scheduler","500m / 2Gi, límite 2 / 4Gi"],["Interfaz",":8002"]], r:"7-análisis-por-lote"},
+  pgairflow: {g:"nodo-data", q:"Base propia para los metadatos de Airflow (corridas, estados y usuarios), separada de los datos del proyecto.", f:[["Imagen","postgres:16"],["Volumen","2Gi"]], r:"12-kubernetes"},
+  locust: {x:["minio"], g:"nodo-data", q:"Genera la carga contra la API desde otro nodo, para no quitarle CPU. PredictUser envía propiedades normales; ReplayUser envía filas del holdout con su precio real, para medir el error en línea. La muestra de 5.000 filas la baja de MinIO con un usuario de solo lectura.", f:[["Imagen","locustio/locust:2.46.7"],["Escalones","10, 25, 50 y 100 usuarios"],["Interfaz",":8010"]], r:"13-observabilidad-y-prueba-de-carga"},
+  pgdatos: {x:["grafana"], g:"nodo-data", q:"La base del dominio con tres schemas: raw (cada lote sin modificar), clean (filas válidas trazables por row_hash) y audit (lo que pasó con cada lote y cada modelo). También guarda cada inferencia de la API. Un rol por consumidor.", f:[["Roles","airflow_etl, api_writer (solo inserta), app_reader (solo lee)"],["Ciclo 1","1.084.909 filas en RAW, 1.083.337 en CLEAN"],["Volumen","20Gi"]], r:"3-datos"},
+  minio: {x:["locust"], g:"nodo-data", q:"Almacenamiento de objetos. landing guarda cada respuesta de la API tal cual; datasets, los archivos de trabajo y la muestra de replay; mlflow, los artefactos de los modelos. Un usuario por cliente con política de mínimo privilegio.", f:[["Usuarios","mlflow, airflow, locust (solo lee datasets/replay)"],["Volumen","20Gi"],["Interfaz",":8004"]], r:"8-mlflow"},
+  mlflow: {g:"nodo-data", q:"Experimentos y registro de modelos. Cada run guarda lote, commit, razón, métricas y SHAP. Promover es mover el alias champion; challenger apunta al último candidato y previous_champion permite volver atrás.", f:[["Alias hoy","champion v4 · challenger v5 · previous_champion v3"],["Artefactos","servidos por el propio MLflow desde MinIO"],["Interfaz",":8003"]], r:"8-mlflow"},
+  pgmlflow: {g:"nodo-data", q:"Base de metadatos de MLflow (no SQLite), separada de los datos del proyecto.", f:[["Imagen","postgres:16"],["Volumen","2Gi"]], r:"8-mlflow"},
+  streamlit: {g:"nodo-serving", q:"Interfaz para usuarios: predicción con explicación SHAP y feedback, historial de cada lote con su decisión y su razón, y el modelo en producción con sus recargas. Nunca carga el modelo: todo pasa por la API.", f:[["Lee","audit con el rol app_reader"],["Recursos","100m / 256Mi, límite 500m / 768Mi"],["Interfaz",":8007"]], r:"10-streamlit"},
+  fastapi: {g:"nodo-serving", q:"Sirve el champion de MLflow y corre el challenger en sombra en el 20 % del tráfico en vivo. Revisa los alias cada 30 s y cambia de modelo sin reiniciarse; si la descarga falla, sigue con el anterior. Registra cada inferencia y expone métricas.", f:[["Réplicas","HPA de 2 a 3 por CPU (objetivo 70 %)"],["Recursos","500m / 768Mi, límite 1 / 1536Mi"],["Capacidad","~4 RPS por réplica (prueba del 23 nov)"],["Interfaz",":8005/docs"]], r:"9-inferencia"},
+  prometheus: {x:["apidatos"], g:"nodo-serving", q:"Descubre las réplicas de la API con kubernetes_sd y las scrapea cada 5 s. También scrapea la API de datos y el cAdvisor de los dos nodos (CPU, memoria y throttling por contenedor).", f:[["Imagen","prom/prometheus:v3.5.0"],["Volumen","5Gi"],["Interfaz",":8009"]], r:"13-observabilidad-y-prueba-de-carga"},
+  grafana: {x:["pgdatos"], g:"nodo-serving", q:"Dashboard Housing API, versionado en un ConfigMap: tráfico, latencia, errores, versión del modelo, sombra, registro de inferencias, recursos de los pods y el MAPE en línea del replay, que lee de PostgreSQL.", f:[["Imagen","grafana/grafana:12.1.0"],["Fuentes","Prometheus y PostgreSQL (app_reader)"],["Interfaz",":8008"]], r:"13-observabilidad-y-prueba-de-carga"},
+};
+
+const FLOWS = {
+  gitops: {name:"Un cambio en Git", c:"--gitops", steps:[
+    ["g1","Un integrante abre un PR. Al fusionarlo, el cambio llega a master."],
+    ["g2","El push a master dispara GitHub Actions: CI y build de las imágenes que cambiaron."],
+    ["g4","La imagen se publica en DockerHub con el SHA del commit, por ejemplo housing-api:sha-587b565."],
+    ["g3","El mismo workflow hace un commit con el tag nuevo en el manifiesto."],
+    ["g5","Argo CD lee el repositorio y ve ese commit."],
+    ["g6","Argo sincroniza el clúster: el Deployment apunta a la imagen nueva."],
+    ["g7","El nodo descarga la imagen de DockerHub y el pod nuevo reemplaza al anterior."],
+  ]},
+  lote: {name:"Un lote de datos", c:"--lote", steps:[
+    ["d1","Cada 15 minutos Airflow pide un lote a la API de datos. Una ejecución es una petición y un lote."],
+    ["d4","La respuesta se guarda tal cual en MinIO, con su huella SHA-256. Si la huella ya existe, el lote es repetido y solo vigila al modelo."],
+    ["d3","Las filas van a RAW sin modificar. Se valida esquema, calidad, categorías nuevas y drift; las válidas pasan a CLEAN y cada paso queda en la auditoría."],
+    ["d5","Si el lote lo justifica, entrena un candidato y lo registra en MLflow. Si pasa las seis compuertas contra el champion, mueve el alias champion."],
+    ["d6","MLflow guarda el modelo, los gráficos y SHAP en MinIO."],
+    ["s5","La API revisa el alias cada 30 s, ve la versión nueva y la carga sin reiniciarse."],
+  ]},
+  inferencia: {name:"Una predicción", c:"--inf", steps:[
+    ["g9","El usuario abre Streamlit por el port-forward de la VM de entrada."],
+    ["s4","Streamlit envía la propiedad a la API: POST /predict."],
+    ["fastapi","La API predice con el champion que ya tiene en memoria y, en el 20 % del tráfico, también con el challenger en sombra."],
+    ["s6","La inferencia queda en raw.inference_events: entrada, predicción, versión, latencia y sombra."],
+    ["s7","El historial de lotes y decisiones lo lee Streamlit de la auditoría, con un rol de solo lectura."],
+  ]},
+  carga: {name:"Prueba de carga", c:"--carga", steps:[
+    ["c1","Locust, en nodo-data, envía predicciones normales y filas del holdout con su precio real."],
+    ["s8","Prometheus scrapea las métricas de cada réplica cada 5 s y la CPU de los contenedores por cAdvisor."],
+    ["s9","Grafana muestra el efecto: con 2 réplicas el throughput se queda en ~8 RPS y la latencia crece con los usuarios."],
+    ["fastapi","Con la CPU sobre el 70 % el HPA agrega una réplica: ~11 RPS con 3 réplicas, sin fallos ni reinicios."],
+  ]},
+};
+
+const svg = document.getElementById("map");
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.appendChild(e); return e; };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+const defs = $("#defs");
+const markerColors = {n:"--line", gitops:"--gitops", lote:"--lote", inf:"--inf", carga:"--carga"};
+function buildMarkers() {
+  defs.innerHTML = "";
+  for (const [k, v] of Object.entries(markerColors)) {
+    const m = el("marker", {id:"ar-" + k, viewBox:"0 0 10 10", refX:"9", refY:"5", markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"}, defs);
+    el("path", {d:"M0 0 L10 5 L0 10 z", fill: css(v)}, m);
+  }
+}
+buildMarkers();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", buildMarkers);
+
+const bands = $("#bands");
+el("rect", {x:20, y:20, width:1560, height:136, rx:14, fill:"var(--bg)", stroke:"var(--frame)"}, bands);
+el("text", {x:40, y:42, class:"band-sub"}, bands).textContent = "FUERA DEL CLÚSTER";
+el("rect", {x:20, y:180, width:1560, height:820, rx:14, fill:"none", stroke:"var(--frame)", "stroke-width":1.5}, bands);
+el("text", {x:600, y:206, class:"band-label"}, bands).textContent = "Clúster RKE2 housing · namespace housing-mlops";
+el("rect", {x:40, y:310, width:1520, height:320, rx:12, fill:"var(--data-band)", stroke:"var(--data-stroke)", "stroke-opacity":.5}, bands);
+el("text", {x:620, y:336, class:"band-label"}, bands).textContent = "nodo-data · 10.43.97.105";
+el("text", {x:850, y:336, class:"band-sub"}, bands).textContent = "datos y entrenamiento";
+el("rect", {x:40, y:680, width:1520, height:300, rx:12, fill:"var(--serv-band)", stroke:"var(--serv-stroke)", "stroke-opacity":.5}, bands);
+el("text", {x:820, y:706, class:"band-label"}, bands).textContent = "nodo-serving · 10.43.97.92";
+el("text", {x:1065, y:706, class:"band-sub"}, bands).textContent = "inferencia y observabilidad";
+
+const edgeEls = {};
+const gEdges = $("#edges");
+for (const e of EDGES) {
+  const g = el("g", {class:"edge" + (e.dash ? " dash" : ""), "data-id": e.id}, gEdges);
+  const d = e.p.map((pt, i) => (i ? "L" : "M") + pt[0] + " " + pt[1]).join(" ");
+  const path = el("path", {d, "marker-end":"url(#ar-n)"}, g);
+  if (e.l) { const t = el("text", {x:e.l[0], y:e.l[1], "text-anchor": e.l[3] || "middle"}, g); t.textContent = e.l[2]; }
+  edgeEls[e.id] = {g, path, e};
+}
+
+const nodeEls = {};
+const gNodes = $("#nodes");
+for (const n of NODES) {
+  const g = el("g", {class:"node k-" + n.k, "data-id": n.id, tabindex:"0", role:"button", "aria-label": n.t}, gNodes);
+  if (n.db) {
+    const e = 9, x = n.x, y = n.y, w = n.w, h = n.h;
+    el("path", {class:"shape", d:`M${x} ${y+e} A${w/2} ${e} 0 0 1 ${x+w} ${y+e} V${y+h-e} A${w/2} ${e} 0 0 1 ${x} ${y+h-e} Z`}, g);
+    el("path", {class:"shape", d:`M${x} ${y+e} A${w/2} ${e} 0 0 0 ${x+w} ${y+e}`, fill:"none"}, g);
+  } else {
+    el("rect", {class:"shape", x:n.x, y:n.y, width:n.w, height:n.h, rx:10}, g);
+  }
+  const lines = 1 + n.s.length, cy = n.y + n.h / 2 + (n.db ? 5 : 0), start = cy - (lines - 1) * 10;
+  el("text", {class:"t", x:n.x + n.w / 2, y:start + 5, "text-anchor":"middle"}, g).textContent = n.t;
+  n.s.forEach((s, i) => { el("text", {class:"s", x:n.x + n.w / 2, y:start + 5 + (i + 1) * 20, "text-anchor":"middle"}, g).textContent = s; });
+  nodeEls[n.id] = {g, n};
+  g.addEventListener("click", () => select(n.id));
+  g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(n.id); } });
+}
+
+const fx = $("#fx");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function clearHot() {
+  svg.classList.remove("dim");
+  Object.values(edgeEls).forEach(({g, path}) => { g.classList.remove("hot"); path.style.stroke = ""; path.style.opacity = ""; path.setAttribute("marker-end", "url(#ar-n)"); });
+  Object.values(nodeEls).forEach(({g}) => g.classList.remove("lit", "sel"));
+  fx.innerHTML = "";
+}
+function heat(edgeId, colorVar, key) {
+  const x = edgeEls[edgeId]; if (!x) return;
+  x.g.classList.add("hot"); x.path.style.stroke = `var(${colorVar})`; x.path.setAttribute("marker-end", `url(#ar-${key})`);
+  nodeEls[x.e.a].g.classList.add("lit"); nodeEls[x.e.b].g.classList.add("lit");
+}
+let anim = 0;
+function pulse(edgeId, colorVar) {
+  cancelAnimationFrame(anim);
+  fx.innerHTML = "";
+  const x = edgeEls[edgeId]; if (!x || reduce) return;
+  const dot = el("circle", {r:7, class:"pulse", fill:`var(${colorVar})`, stroke:"var(--surface)", "stroke-width":2}, fx);
+  const len = x.path.getTotalLength(), dur = Math.max(900, len * 4);
+  let t0;
+  const step = (ts) => {
+    t0 ??= ts;
+    const k = ((ts - t0) % (dur + 500)) / dur;
+    const p = x.path.getPointAtLength(Math.min(1, k) * len);
+    dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+    dot.setAttribute("opacity", k > 1 ? 0 : 1);
+    anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+
+function select(id) {
+  stopFlow(false);
+  clearHot();
+  svg.classList.add("dim");
+  nodeEls[id].g.classList.add("lit", "sel");
+  const linked = EDGES.filter((e) => e.a === id || e.b === id);
+  linked.forEach((e) => { const x = edgeEls[e.id]; x.g.classList.add("hot"); nodeEls[e.a].g.classList.add("lit"); nodeEls[e.b].g.classList.add("lit"); });
+  showDetail(id);
+}
+function showDetail(id) {
+  const n = nodeEls[id].n, i = INFO[id];
+  const linked = [...new Set([...EDGES.filter((e) => e.a === id || e.b === id).map((e) => e.a === id ? e.b : e.a), ...(i.x || [])])];
+  const box = $("#detail");
+  box.hidden = false;
+  box.innerHTML = "";
+  const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = i.g; box.appendChild(tag);
+  const h = document.createElement("h2"); h.style.marginTop = "8px"; h.textContent = n.t; h.dataset.node = id; box.appendChild(h);
+  const p = document.createElement("p"); p.style.marginTop = "8px"; p.textContent = i.q; box.appendChild(p);
+  if (i.f?.length) {
+    const h3 = document.createElement("h3"); h3.textContent = "Datos"; h3.style.marginTop = "12px"; box.appendChild(h3);
+    const ul = document.createElement("ul"); ul.className = "facts"; ul.style.marginTop = "6px";
+    i.f.forEach(([k, v]) => { const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k; const s = document.createElement("span"); s.textContent = v; li.append(b, s); ul.appendChild(li); });
+    box.appendChild(ul);
+  }
+  if (linked.length) {
+    const h3 = document.createElement("h3"); h3.textContent = "Se comunica con"; h3.style.marginTop = "12px"; box.appendChild(h3);
+    const div = document.createElement("div"); div.className = "links"; div.style.marginTop = "6px";
+    linked.forEach((lid) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = nodeEls[lid].n.t.split(" · ")[0]; b.addEventListener("click", () => select(lid)); div.appendChild(b); });
+    box.appendChild(div);
+  }
+  const a = document.createElement("a"); a.href = README + i.r; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Ver la sección en el README"; a.style.display = "inline-block"; a.style.marginTop = "12px"; box.appendChild(a);
+}
+
+let flow = null, idx = 0, timer = 0;
+const btns = [...document.querySelectorAll(".flow-btn")];
+btns.forEach((b) => b.addEventListener("click", () => startFlow(b.dataset.flow)));
+function startFlow(name) {
+  flow = name; idx = 0;
+  btns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.flow === name)));
+  const f = FLOWS[name];
+  $("#stepsBox").hidden = false;
+  if (!$("#detail h2")?.dataset.node) $("#detail").hidden = true;
+  $("#stepsBox").style.setProperty("--c", `var(${f.c})`);
+  $("#flowName").textContent = f.name;
+  const ol = $("#steps"); ol.innerHTML = "";
+  f.steps.forEach(([, txt], k) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = txt; b.addEventListener("click", () => { pause(); go(k); }); li.appendChild(b); ol.appendChild(li); });
+  try { history.replaceState(null, "", "#" + name); } catch (e) {}
+  go(0); play();
+}
+function go(k) {
+  const f = FLOWS[flow]; if (!f) return;
+  idx = (k + f.steps.length) % f.steps.length;
+  clearHot(); svg.classList.add("dim");
+  const key = flow === "inferencia" ? "inf" : flow;
+  f.steps.slice(0, idx).forEach(([id]) => { if (edgeEls[id]) { heat(id, f.c, key); edgeEls[id].path.style.opacity = ".5"; } else if (nodeEls[id]) nodeEls[id].g.classList.add("lit"); });
+  const [cur] = f.steps[idx];
+  if (edgeEls[cur]) { edgeEls[cur].path.style.opacity = "1"; heat(cur, f.c, key); pulse(cur, f.c); }
+  else if (nodeEls[cur]) { nodeEls[cur].g.classList.add("lit", "sel"); showDetail(cur); }
+  [...$("#steps").children].forEach((li, k2) => li.classList.toggle("on", k2 === idx));
+  $("#steps").children[idx]?.scrollIntoView({block:"nearest"});
+}
+function play() { pause(); $("#play").textContent = "Pausar"; timer = setInterval(() => { if (idx === FLOWS[flow].steps.length - 1) { pause(); return; } go(idx + 1); }, 3800); }
+function pause() { clearInterval(timer); timer = 0; $("#play").textContent = "Reproducir"; }
+function stopFlow(hide = true) { pause(); cancelAnimationFrame(anim); flow = hide ? null : flow; if (hide) { $("#stepsBox").hidden = true; btns.forEach((b) => b.setAttribute("aria-pressed", "false")); } }
+$("#play").addEventListener("click", () => { if (!flow) return; if (timer) pause(); else { if (idx === FLOWS[flow].steps.length - 1) go(0); play(); } });
+$("#next").addEventListener("click", () => { pause(); go(idx + 1); });
+$("#prev").addEventListener("click", () => { pause(); go(idx - 1); });
+
+const hash = location.hash.slice(1);
+if (hash === "png") document.body.classList.add("png");
+else if (FLOWS[hash]) startFlow(hash);
+})();
+</script>
+</body>
+</html>
