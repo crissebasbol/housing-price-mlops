@@ -558,6 +558,26 @@ Así se procesó el primer ciclo en el clúster (22 y 23 de noviembre). Las mét
 - **Artefactos:** predicho frente a real, residuos y error por banda de precio; SHAP (beeswarm, importancia y dependencia de `house_size` sobre 2.000 filas); `gates.json`; reportes de validación y drift.
 - **Modelo:** `mlflow.sklearn` con serialización skops y una lista explícita de tipos confiables (nuestras dos clases y el predictor de árboles de scikit-learn), firma y dependencias fijas. Las versiones nunca se borran.
 
+### Buckets, usuarios y políticas de MinIO
+
+El Job `minio-setup` (`minio/k8s/job-setup.yaml`, un hook PostSync de Argo CD que se puede repetir sin efectos) corre `minio/setup.sh` con la cuenta raíz de MinIO: crea los buckets y un usuario por cliente, cada uno con una política de mínimo privilegio (`minio/policies/`). Las claves salen de los Secrets `minio-root`, `minio-mlflow`, `minio-airflow` y `minio-locust`, creados con `scripts/create_secrets.sh`; ninguna está en el repositorio.
+
+| Usuario | Política | Permisos |
+|---|---|---|
+| `mlflow` | `mlflow-artifacts` | Leer, escribir y borrar en `mlflow` (artefactos de los runs) |
+| `airflow` | `airflow-data` | Leer, escribir y borrar en `landing` (respuestas crudas de la API) y `datasets` (archivos de trabajo y muestra de replay) |
+| `locust` | `locust-replay` | Solo leer los objetos de `datasets/replay/`; ni siquiera puede listar el bucket |
+
+Airflow y la API no necesitan credenciales de MinIO para los modelos: MLflow sirve los artefactos como proxy.
+
+![Log del Job minio-setup](docs/images/plataforma_04_minio_setup_log.png)
+
+*Log del Job `minio-setup` en el clúster: crea los buckets `mlflow`, `landing` y `datasets`, las políticas `mlflow-artifacts`, `airflow-data` y `locust-replay`, y los usuarios `mlflow`, `airflow` y `locust`, cada uno con su política.*
+
+![Buckets en la consola de MinIO](docs/images/plataforma_07_minio_buckets.png)
+
+*Consola de MinIO (`:8004`) recién creada la plataforma: los 3 buckets, todavía vacíos.*
+
 Dos detalles que costaron tiempo y quedaron documentados en el código: la validación automática de MLflow con `input_example` cargaba el modelo una y otra vez y no terminaba, así que se registra solo la firma; y los clientes necesitan `MLFLOW_ENABLE_PROXY_MULTIPART_DOWNLOAD=false`, porque si no piden URLs prefirmadas y bajan los artefactos directo de MinIO, saltándose el proxy.
 
 ![Runs de MLflow de las versiones 1 a 5](docs/images/mlflow_03_runs_v1_v5.png)
@@ -721,7 +741,7 @@ Los valores salen de mediciones, no de supuestos: el scheduler de Airflow con el
 
 ![Secrets del namespace](docs/images/cluster_11_secrets.png)
 
-*Los Secrets del namespace creados con `create_secrets.sh`: solo nombres y número de claves.*
+*Los 6 Secrets de la plataforma de datos el 22 de noviembre, creados con `create_secrets.sh` (solo nombres, tipo y número de claves). Después el mismo script agregó los de Airflow, la API y Grafana.*
 
 ![Pods de la plataforma de datos](docs/images/plataforma_02_pods.png)
 
