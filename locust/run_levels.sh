@@ -3,6 +3,7 @@
 # Uso: ./locust/run_levels.sh [usuarios ...]   (por defecto 10 50 100 200 300)
 # Por cada escalón guarda las estadísticas de Locust, `kubectl top` de los pods de la API
 # y una fila en locust/resultados/resumen.csv con los segundos de inicio y fin para Grafana.
+# La columna replicas es el máximo de pods de la API vistos en el escalón (el HPA puede escalar).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -17,7 +18,6 @@ COOLDOWN=${COOLDOWN:-30}
 MAX_FAIL_PCT=${MAX_FAIL_PCT:-1}
 MAX_P95_MS=${MAX_P95_MS:-500}
 
-REPLICAS=$(kubectl -n "$NS" get deploy api -o jsonpath='{.spec.replicas}')
 POD=$(kubectl -n "$NS" get pod -l app=locust -o jsonpath='{.items[0].metadata.name}')
 CHAMPION=$(kubectl -n "$NS" exec "$POD" -c locust -- python -c \
   "import json, urllib.request; print(json.load(urllib.request.urlopen('$API_HOST/health'))['champion_version'])")
@@ -31,8 +31,10 @@ HEADER="replicas,usuarios,spawn_rate,rps,peticiones,fallos,fallos_pct,promedio_m
 for USERS in "${LEVELS[@]}"; do
   RAMP=$(( (USERS + SPAWN_RATE - 1) / SPAWN_RATE ))
   RUN_TIME=$(( RAMP + STABLE_SECONDS ))
-  NAME="rep${REPLICAS}_u${USERS}"
-  echo "== $NAME: $USERS usuarios, ${RAMP} s de rampa y ${STABLE_SECONDS} s estables (champion v$CHAMPION)"
+  START_REPLICAS=$(kubectl -n "$NS" get deploy api -o jsonpath='{.spec.replicas}')
+  NAME="u${USERS}_$(date +%Y%m%d%H%M%S)"
+  echo "== $NAME: $USERS usuarios, ${RAMP} s de rampa y ${STABLE_SECONDS} s estables" \
+    "(champion v$CHAMPION, $START_REPLICAS réplicas al empezar)"
 
   (
     end=$(( $(date +%s) + RUN_TIME ))
@@ -56,6 +58,11 @@ for USERS in "${LEVELS[@]}"; do
     kubectl -n "$NS" cp -c locust "$POD:/tmp/${NAME}_${SUFFIX}.csv" "resultados/${NAME}_${SUFFIX}.csv" \
       >/dev/null 2>&1 || true
   done
+
+  REPLICAS=$(awk -F, 'NR > 1 { n[$1]++ } END { m = 0; for (t in n) if (n[t] > m) m = n[t]; print m }' \
+    "resultados/top_${NAME}.csv")
+  [[ "$REPLICAS" -gt 0 ]] || REPLICAS=$START_REPLICAS
+  kubectl -n "$NS" get hpa api --no-headers 2>/dev/null || true
 
   awk -F, -v rep="$REPLICAS" -v users="$USERS" -v sr="$SPAWN_RATE" -v maxf="$MAX_FAIL_PCT" \
     -v maxp="$MAX_P95_MS" -v champ="$CHAMPION" -v ini="$START" -v fin="$END" '
