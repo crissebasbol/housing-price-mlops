@@ -215,8 +215,12 @@ Todos los datos del proyecto viven en una base PostgreSQL (`housing`) con tres s
 
 Del primer ciclo entraron 1.084.909 filas a RAW: 1.572 se rechazaron por calidad y 1.083.337 pasaron a CLEAN.
 
-<!-- captura pendiente: datos_01_raw_clean (raw.batches con filas de RAW, rechazadas y CLEAN por ingreso) -->
-<!-- captura pendiente: datos_02_fila_trazable (fila de CLEAN unida a su payload de RAW) -->
+![raw.batches unido a los conteos de RAW y CLEAN por ingreso](docs/images/datos_01_raw_clean.png)
+
+*`raw.batches` con los conteos de RAW y CLEAN de los ingresos 1 a 10: filas que entregó la API, los primeros 12 caracteres de la huella SHA-256, filas en RAW, rechazadas y en CLEAN (por ejemplo, ingreso 6: 361.457 en RAW, 797 rechazadas y 360.660 en CLEAN). El ingreso 7 es el fin de datos, sin filas. Los ingresos 8 a 10 tienen la misma huella que los ingresos 1 a 3 (columna `repite`) y no insertan filas.*
+![Filas de CLEAN unidas a su fila original de RAW](docs/images/datos_02_fila_trazable.png)
+
+*Cinco filas del ingreso 5 en CLEAN unidas a su fila original en RAW por `row_hash`: la partición asignada (train, val o test), el precio y el código postal normalizados (RAW guarda el `zip_code` tal como llegó, `44039.0`; CLEAN lo guarda como `44039`) y `quality_status=valid`.*
 
 ![Tabla audit.batch_runs con los ingresos del primer ciclo y los repetidos](docs/images/pipeline_02_auditoria_ciclos.png)
 
@@ -252,7 +256,13 @@ Una fila que no cumple queda en RAW con `quality_status=rejected` y sus motivos,
 
 Cada reporte queda en `audit.batch_runs` (JSON) y como artefacto del run de MLflow cuando hay entrenamiento.
 
-<!-- captura pendiente: streamlit_09_detalle_drift (Calidad y Drift del ingreso 5) -->
+![Reporte de calidad del ingreso 5 en Streamlit](docs/images/streamlit_09_detalle_calidad.png)
+
+*Reporte de calidad del ingreso 5 (lote 4) en Streamlit: 320.696 filas con precio entre 300.023 y 500.000 USD (mediana 395.000), 320.538 válidas, 158 rechazadas (0,05 %), 0 duplicados, extremos por IQR por variable y nulos por columna.*
+
+![Reporte de drift del ingreso 5 en Streamlit](docs/images/streamlit_10_detalle_drift.png)
+
+*Reporte de drift del mismo ingreso frente al acumulado: `bed` (PSI 0,23, KS 0,20), `bath` (PSI 0,59, KS 0,30) y `price` (PSI 8,07, KS 1, mediana de 204.000 a 395.000 USD) con `drift: true`; la distribución de `state` y `status` casi no cambia (PSI 0,06 y 0,001).*
 
 ### La decisión de entrenar
 
@@ -312,11 +322,17 @@ Champion y candidato se evalúan sobre **el mismo** holdout en el momento de com
 
 Sin champion solo aplican G5 y G6. **Promover** es mover alias en el registro de MLflow: `previous_champion` pasa a apuntar al champion actual y `champion` al candidato. `challenger` siempre apunta al último candidato, promovido o no. Cada versión lleva tags con su ingreso, su decisión, su razón y su MAPE de holdout.
 
+![Compuertas del ingreso 5 en Streamlit](docs/images/streamlit_11_detalle_compuertas.png)
+
+*Compuertas del ingreso 5 (v4 frente a v3) en el detalle de Streamlit: G1 con MAPE de 20,47 % frente a 28,68 % (-28,6 %; se exige al menos -1 %), MAE -46,4 % y R² de 0,581; G2 con una diferencia media de error porcentual de -0,082 e intervalo de 95 % entre -0,084 y -0,080, sobre 50.000 filas y 1.000 muestras bootstrap; G3 sobre las 32.537 filas recientes del holdout.*
+
 ![Explicación SHAP de una predicción en Streamlit](docs/images/streamlit_03_shap_cascada.png)
 
 *Explicación de una predicción del modelo v4 en Streamlit: valores SHAP desde el precio base hasta la predicción. El estado, el área, el estado de venta, la agencia y las habitaciones suben el precio; el código postal y la ciudad lo bajan.*
 
-<!-- captura pendiente: mlflow_05_shap (beeswarm SHAP del run de la versión 4) -->
+![Beeswarm SHAP del run de la versión 4 en MLflow](docs/images/mlflow_05_shap.png)
+
+*Artefacto SHAP del run `c1-b4` (versión 4, champion) en MLflow: el código postal y el tamaño de la casa son las variables con más efecto; para `bath` y `house_size` los valores altos (rojo) siempre suben el precio, como exige la restricción monótona.*
 
 ## 6. Calibración
 
@@ -498,7 +514,7 @@ Así se procesó el primer ciclo en el clúster (22 y 23 de noviembre). Las mét
 - **Cada señal tiene su lote.** El lote 2 entrenó sin ningún cambio numérico, solo por la categoría nueva y el volumen. Los lotes 4 y 5 entrenaron por drift del precio: traen rangos de precio que ningún modelo había visto.
 - **Las mejoras grandes vienen de los rangos nuevos.** El champion entrenado hasta el lote 2 solo conocía casas de hasta 300 mil USD; con el lote 4 el candidato bajó el MAPE de 28,7 % a 20,5 %. El lote 2 aportó menos (-7,2 %): más casas del mismo rango.
 - **La compuerta de latencia frena a la mejor versión.** La v5 era 26 % mejor en holdout, y en producción también: en el replay de la prueba de carga, la sombra v5 tuvo ~20 % de MAPE frente a ~25-30 % del champion v4 ([sección 13](#13-observabilidad-y-prueba-de-carga)). Pero con 979 iteraciones tarda 152 ms por predicción. Es el compromiso entre precisión y costo de servicio que la compuerta hace explícito; la forma de resolverlo es limitar la complejidad del modelo al entrenar, no relajar la compuerta ([sección 14](#14-lo-que-no-se-hizo-y-por-qué)).
-- **El monitoreo es estable.** En cada ciclo de repetidos, el MAPE del champion sobre el holdout de cada lote se repite igual, ciclo tras ciclo: el modelo productivo no cambia y la medición tampoco. El lote más difícil para la v4 es el 3 (Massachusetts, que nunca vio en el entrenamiento hasta ese lote) y el más fácil el 4, su propio rango de precios.
+- **El monitoreo muestra dónde falla el champion.** En el ciclo 2 la v4 tuvo sobre el holdout de cada lote repetido: 29,1 % (lote 0), 27,0 % (1), 26,4 % (2), 25,8 % (3), 12,2 % (4) y 44,1 % (5). El peor es el lote 5, con casas desde 500 mil USD que la v4 no vio al entrenar: exactamente donde la v5 mejoraba. El mejor es el lote 4, su propio rango de precios. Los mismos valores se repiten en cada ciclo: el modelo productivo no cambia y la medición es estable.
 
 ![Razón del rechazo de la versión 5](docs/images/pipeline_08_rechazo_v5_g6.png)
 
@@ -508,7 +524,9 @@ Así se procesó el primer ciclo en el clúster (22 y 23 de noviembre). Las mét
 
 *Streamlit, ciclo 1: MAPE del champion sobre cada lote nuevo antes de entrenar (v2 y v3) y MAPE de holdout de cada candidata frente al champion de ese momento (ingresos 1, 2, 3 y 5).*
 
-<!-- captura pendiente: pipeline_09_monitoreo (MAPE del champion por lote en el ciclo 2) -->
+![MAPE del champion en cada lote repetido del ciclo 2](docs/images/pipeline_09_monitoreo.png)
+
+*Monitoreo en el ciclo 2: MAPE del champion v4 sobre el holdout de cada lote repetido (29,1 %, 27,0 %, 26,4 %, 25,8 %, 12,2 % y 44,1 %), con la razón registrada ("Lote repetido: su contenido es idéntico al ingreso 1 (misma huella SHA-256)") y el fin de datos con reinicio.*
 
 ![Historial con 12 ciclos en Streamlit](docs/images/streamlit_08_historial_ciclos.png)
 
@@ -551,7 +569,9 @@ Dos detalles que costaron tiempo y quedaron documentados en el código: la valid
 *Run `c1-b1` (versión 2): 29 métricas y los tags de trazabilidad: ingreso 2, lote 1, ciclo 1, lotes usados 1 y 2, huella de los datos, commit `6ad5b83` de la imagen, corrida de Airflow, razón del entrenamiento (línea base) y de la promoción.*
 
 <!-- captura pendiente: mlflow_04_registro_alias (Model Registry con versiones y alias) -->
-<!-- captura pendiente: mlflow_06_graficos (artefacto de gráficos del run v4) -->
+![Error por banda de precio del run de la versión 4](docs/images/mlflow_06_graficos.png)
+
+*Artefacto `plots/val_mape_por_banda.png` del run `c1-b4`: MAPE de validación por banda de precio, ~27 % por debajo de 300 mil USD, ~12 % entre 300 y 500 mil y ~16 % por encima. Es el diagnóstico por banda que se registra pero no bloquea la promoción.*
 
 ## 9. Inferencia
 
@@ -602,7 +622,9 @@ Dos detalles que costaron tiempo y quedaron documentados en el código: la valid
 
 *Después del ciclo 1: champion v4 y sombra v5, el candidato rechazado que sigue como challenger.*
 
-<!-- captura pendiente: api_09_registro_inferencias (raw.inference_events por origen y últimas filas) -->
+![Registro de inferencias en raw.inference_events](docs/images/api_09_registro_inferencias.png)
+
+*`raw.inference_events`: eventos por origen (10.744 de Locust, 2.740 de replay, 1 de Streamlit y 1 de un cliente, todos `ok`) y las últimas 12 filas, de la segunda prueba de carga: hora, origen, endpoint, código, estado, versión del champion (4), predicción, versión y predicción de la sombra (5, solo en una parte del tráfico) y latencia del champion, que con la réplica saturada sube a 3,5-5,4 s porque cada predicción espera CPU.*
 
 ## 10. Streamlit
 
@@ -670,7 +692,9 @@ Argo CD instala una sola app a mano, `housing-root` (patrón *app-of-apps*), que
 
 *History de `serving`: las sincronizaciones de los merges #20 (API) y #22 (Streamlit).*
 
-<!-- captura pendiente: cicd_07_actions_lista (lista de corridas de Actions) -->
+![Lista de corridas de GitHub Actions](docs/images/cicd_07_actions_lista.png)
+
+*GitHub Actions: 152 corridas de los workflows del repositorio (CI, builds de cada imagen y CodeQL); las últimas, del PR #27 y su merge, en verde.*
 
 ## 12. Kubernetes
 
@@ -711,7 +735,9 @@ Los valores salen de mediciones, no de supuestos: el scheduler de Airflow con el
 
 *Las réplicas de la API con 0 reinicios después de la primera prueba de carga con 100 usuarios.*
 
-<!-- captura pendiente: k8s_01_pods_recursos (todos los pods con nodo, requests y limits) -->
+![Nodos y pods del namespace con sus recursos](docs/images/k8s_01_pods_recursos.png)
+
+*Los dos nodos en Ready y todos los pods de `housing-mlops` con su nodo, estado, requests y limits de CPU y memoria: Airflow, la plataforma de datos y Locust en `nodo-data`; la API (2 réplicas), Streamlit, Prometheus y Grafana en `nodo-serving`; los Jobs de migraciones, usuario y MinIO en `Succeeded`.*
 
 ## 13. Observabilidad y prueba de carga
 
@@ -730,7 +756,9 @@ Los valores salen de mediciones, no de supuestos: el scheduler de Airflow con el
 
 *El pod de Locust en `nodo-data`: el *init container* descargó la muestra de replay con el usuario `locust` de MinIO y Locust cargó las 5.000 filas.*
 
-<!-- captura pendiente: prometheus_01_targets (targets en UP) -->
+![Targets de Prometheus en UP](docs/images/prometheus_01_targets.png)
+
+*Prometheus (`:8009`): los 6 targets en UP. Las 2 réplicas de la API (descubiertas por `kubernetes_sd`, con su pod y nodo como etiquetas), la API de datos, el cAdvisor de los dos nodos y Prometheus.*
 
 ### Primera señal: una prueba manual
 
