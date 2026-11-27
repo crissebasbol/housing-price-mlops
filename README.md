@@ -10,7 +10,7 @@ Every data batch is validated (schema, quality, drift, new categories) before th
 
 Proyecto final de **Operaciones de Machine Learning**, Pontificia Universidad Javeriana (Nivel 4: automatización, decisión de reentrenamiento y despliegue GitOps). Este README es el informe del proyecto y la bitácora de su desarrollo. Grupo 1, día martes, API de datos v2.
 
-**Video de sustentación:** _pendiente_
+**Video de sustentación:** https://youtu.be/cBPnmpeW-II
 
 ## Resultados en una página
 
